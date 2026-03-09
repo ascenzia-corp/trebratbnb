@@ -11,7 +11,7 @@ import { useTacheStore } from '../stores/tacheStore';
 import { useEdlStore } from '../stores/edlStore';
 import { useAchatStore } from '../stores/achatStore';
 import { STATUT_SEJOUR_LABELS, ETAT_EDL_LABELS } from '../utils/labels';
-import { formatDateFull } from '../utils/dateUtils';
+import { formatDateTime, formatInputDateTime } from '../utils/dateUtils';
 import { fetchReservation } from '../services/reservationService';
 import type { Reservation, Assignee } from '../types';
 
@@ -24,7 +24,7 @@ export function ReservationDetailPage() {
   const { achats, fetchAchats } = useAchatStore();
   const [reservation, setReservation] = useState<Reservation | null>(null);
   const [editing, setEditing] = useState(false);
-  const [editData, setEditData] = useState({ voyageur: '', telephone: '', nb_personnes: 1, commentaires: '' });
+  const [editData, setEditData] = useState({ voyageur: '', telephone: '', nb_personnes: 1, commentaires: '', date_checkin: '', date_checkout: '' });
 
   useEffect(() => {
     if (!id) return;
@@ -35,6 +35,8 @@ export function ReservationDetailPage() {
         telephone: r.telephone ?? '',
         nb_personnes: r.nb_personnes,
         commentaires: r.commentaires ?? '',
+        date_checkin: formatInputDateTime(r.date_checkin),
+        date_checkout: formatInputDateTime(r.date_checkout),
       });
     });
     fetchTaches({ reservation_id: id });
@@ -54,6 +56,8 @@ export function ReservationDetailPage() {
       telephone: editData.telephone || null,
       nb_personnes: editData.nb_personnes,
       commentaires: editData.commentaires || null,
+      date_checkin: editData.date_checkin,
+      date_checkout: editData.date_checkout,
     } as Partial<Reservation>);
     const r = await fetchReservation(reservation.id);
     setReservation(r);
@@ -113,12 +117,22 @@ export function ReservationDetailPage() {
               <input value={editData.voyageur} onChange={(e) => setEditData({ ...editData, voyageur: e.target.value })} className={inputClass} placeholder="Voyageur" />
               <input value={editData.telephone} onChange={(e) => setEditData({ ...editData, telephone: e.target.value })} className={inputClass} placeholder="Téléphone" />
               <input type="number" value={editData.nb_personnes} onChange={(e) => setEditData({ ...editData, nb_personnes: Number(e.target.value) })} className={inputClass} />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Check-in</label>
+                  <input type="datetime-local" value={editData.date_checkin} onChange={(e) => setEditData({ ...editData, date_checkin: e.target.value })} className={inputClass} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Check-out</label>
+                  <input type="datetime-local" value={editData.date_checkout} onChange={(e) => setEditData({ ...editData, date_checkout: e.target.value })} className={inputClass} />
+                </div>
+              </div>
               <textarea value={editData.commentaires} onChange={(e) => setEditData({ ...editData, commentaires: e.target.value })} className={`${inputClass} resize-none`} rows={3} />
               <button onClick={handleSaveEdit} className="w-full bg-[#007AFF] text-white py-3 rounded-xl font-semibold">Enregistrer</button>
             </div>
           ) : (
             <div className="space-y-2 text-sm text-gray-700">
-              <p>📅 {formatDateFull(reservation.date_checkin)} → {formatDateFull(reservation.date_checkout)}</p>
+              <p>📅 {formatDateTime(reservation.date_checkin)} → {formatDateTime(reservation.date_checkout)}</p>
               <p>👥 {reservation.nb_personnes} personne{reservation.nb_personnes > 1 ? 's' : ''}</p>
               {reservation.telephone && <p>📞 {reservation.telephone}</p>}
               {reservation.commentaires && <p className="text-gray-500 italic mt-2">{reservation.commentaires}</p>}

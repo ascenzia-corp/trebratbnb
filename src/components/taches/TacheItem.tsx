@@ -40,20 +40,24 @@ export function TacheItem({ tache, onToggleDone, onAssign }: Props) {
             )}
           </div>
         </div>
-        {!isDone && tache.assignee_a === 'non_assignee' && (
+        {!isDone && (
           <div className="flex gap-1">
-            <button
-              onClick={() => onAssign(tache.id, 'manu')}
-              className="text-xs px-2 py-1 rounded-lg bg-blue-50 text-blue-500"
-            >
-              Manu
-            </button>
-            <button
-              onClick={() => onAssign(tache.id, 'alienor')}
-              className="text-xs px-2 py-1 rounded-lg bg-purple-50 text-purple-500"
-            >
-              Aliénor
-            </button>
+            {tache.assignee_a !== 'manu' && (
+              <button
+                onClick={() => onAssign(tache.id, 'manu')}
+                className="text-xs px-2 py-1 rounded-lg bg-blue-50 text-blue-500"
+              >
+                Manu
+              </button>
+            )}
+            {tache.assignee_a !== 'alienor' && (
+              <button
+                onClick={() => onAssign(tache.id, 'alienor')}
+                className="text-xs px-2 py-1 rounded-lg bg-purple-50 text-purple-500"
+              >
+                Aliénor
+              </button>
+            )}
           </div>
         )}
       </div>

@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
 import type { Reservation, CreateReservationInput } from '../types';
 import { PIECES_ORDERED } from '../utils/labels';
+import { createCalendarEvent } from './googleCalendarService';
 
 export async function fetchReservations(): Promise<Reservation[]> {
   const { data, error } = await supabase
@@ -69,6 +70,24 @@ export async function createReservation(input: CreateReservationInput): Promise<
 
   const { error: edlError } = await supabase.from('etats_des_lieux').insert(edls);
   if (edlError) console.error('Error creating EDLs:', edlError);
+
+  // Create Google Calendar event
+  const calResult = await createCalendarEvent({
+    voyageur: input.voyageur,
+    date_checkin: input.date_checkin,
+    date_checkout: input.date_checkout,
+    nb_personnes: input.nb_personnes ?? 1,
+    telephone: input.telephone,
+    commentaires: input.commentaires,
+  });
+
+  if (calResult?.eventId) {
+    await supabase
+      .from('reservations')
+      .update({ google_event_id: calResult.eventId })
+      .eq('id', reservation.id);
+    reservation.google_event_id = calResult.eventId;
+  }
 
   return reservation;
 }
