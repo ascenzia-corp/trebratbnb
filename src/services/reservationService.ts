@@ -51,7 +51,7 @@ export async function createReservation(input: CreateReservationInput): Promise<
   ].map((t) => ({
     ...t,
     reservation_id: reservation.id,
-    a_faire: false,
+    a_faire: true,
     statut: 'a_faire',
     assignee_a: 'non_assignee',
   }));
