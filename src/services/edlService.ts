@@ -48,9 +48,18 @@ export async function uploadEdlPhoto(edlId: string, blob: Blob): Promise<void> {
 
   const { error: uploadError } = await supabase.storage
     .from('edl-photos')
-    .upload(fileName, blob, { contentType: 'image/jpeg' });
+    .upload(fileName, blob, { contentType: 'image/jpeg', upsert: false });
 
-  if (uploadError) throw uploadError;
+  if (uploadError) {
+    // Common issues: bucket doesn't exist, no RLS policy, or bucket is private
+    if (uploadError.message?.includes('Bucket not found') || uploadError.message?.includes('not found')) {
+      throw new Error('Le bucket "edl-photos" n\'existe pas dans Supabase Storage. Créez-le dans le dashboard Supabase → Storage.');
+    }
+    if (uploadError.message?.includes('security') || uploadError.message?.includes('policy') || uploadError.message?.includes('row-level')) {
+      throw new Error('Pas de permission pour uploader. Vérifiez les RLS policies du bucket "edl-photos" dans Supabase.');
+    }
+    throw new Error(`Erreur upload : ${uploadError.message}`);
+  }
 
   const { data: { publicUrl } } = supabase.storage
     .from('edl-photos')
@@ -64,7 +73,11 @@ export async function uploadEdlPhoto(edlId: string, blob: Blob): Promise<void> {
       storage_path: fileName,
     });
 
-  if (insertError) throw insertError;
+  if (insertError) {
+    // Cleanup the uploaded file if the DB insert fails
+    await supabase.storage.from('edl-photos').remove([fileName]);
+    throw new Error(`Erreur enregistrement photo : ${insertError.message}`);
+  }
 }
 
 export async function deleteEdlPhoto(photoId: string, storagePath: string): Promise<void> {

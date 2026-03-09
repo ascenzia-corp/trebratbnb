@@ -9,9 +9,10 @@ import { PIECES_ORDERED } from '../utils/labels';
 import type { Reservation } from '../types';
 
 export function EdlPage() {
-  const { edls, loading, fetchEdls, subscribeToChanges } = useEdlStore();
+  const { edls, loading, fetchEdls, updateEdl, subscribeToChanges } = useEdlStore();
   const { reservations, fetchReservations } = useReservationStore();
   const [selectedReservation, setSelectedReservation] = useState<string>('');
+  const [updatingAgent, setUpdatingAgent] = useState(false);
 
   useEffect(() => {
     fetchReservations();
@@ -41,6 +42,24 @@ export function EdlPage() {
     return PIECES_ORDERED.indexOf(a.piece) - PIECES_ORDERED.indexOf(b.piece);
   });
 
+  // Determine current "réalisé par" from EDLs (majority or first set)
+  const currentAgent = edls.length > 0
+    ? edls.find((e) => e.realise_par !== null)?.realise_par ?? null
+    : null;
+
+  const handleAgentChange = async (agent: 'manu' | 'alienor') => {
+    if (updatingAgent) return;
+    setUpdatingAgent(true);
+    const today = new Date().toISOString().split('T')[0];
+    await Promise.all(
+      edls.map((e) => updateEdl(e.id, { realise_par: agent, date_constat: e.date_constat ?? today }))
+    );
+    if (selectedReservation) {
+      await fetchEdls(selectedReservation);
+    }
+    setUpdatingAgent(false);
+  };
+
   const inputClass = 'w-full bg-white rounded-xl px-4 py-3 text-gray-900 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30';
 
   return (
@@ -61,6 +80,29 @@ export function EdlPage() {
           ))}
         </select>
       </div>
+
+      {/* Réalisé par — global pour toutes les pièces */}
+      {sortedEdls.length > 0 && (
+        <div className="px-4 mb-4">
+          <label className="block text-sm font-medium text-gray-500 mb-2">Réalisé par</label>
+          <div className="flex gap-2">
+            {(['manu', 'alienor'] as const).map((agent) => (
+              <button
+                key={agent}
+                onClick={() => handleAgentChange(agent)}
+                disabled={updatingAgent}
+                className={`flex-1 py-3 rounded-xl text-sm font-medium border-2 transition-colors ${
+                  currentAgent === agent
+                    ? agent === 'manu' ? 'bg-blue-50 border-blue-500 text-blue-700' : 'bg-purple-50 border-purple-500 text-purple-700'
+                    : 'bg-white border-gray-200 text-gray-500'
+                } ${updatingAgent ? 'opacity-50' : ''}`}
+              >
+                {agent === 'manu' ? 'Manu' : 'Aliénor'}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="px-4 space-y-2">
         {loading ? (

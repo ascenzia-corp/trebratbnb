@@ -16,13 +16,19 @@ interface PhotoGalleryProps {
 export function PhotoGallery({ photos, onUpload, onDelete }: PhotoGalleryProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
+    setError(null);
     try {
       await onUpload(file);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Erreur lors de l\'upload';
+      setError(msg);
+      console.error('Photo upload error:', err);
     } finally {
       setUploading(false);
       if (inputRef.current) inputRef.current.value = '';
@@ -62,6 +68,9 @@ export function PhotoGallery({ photos, onUpload, onDelete }: PhotoGalleryProps) 
         onChange={handleFileChange}
         className="hidden"
       />
+      {error && (
+        <p className="text-xs text-red-500 mt-2">{error}</p>
+      )}
     </div>
   );
 }

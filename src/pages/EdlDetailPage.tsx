@@ -103,36 +103,13 @@ export function EdlDetailPage() {
           />
         </div>
 
-        {/* Réalisé par */}
-        <div>
-          <label className="block text-sm font-medium text-gray-500 mb-1">Réalisé par</label>
-          <div className="flex gap-2">
-            {(['manu', 'alienor'] as const).map((agent) => (
-              <button
-                key={agent}
-                onClick={() => handleFieldChange('realise_par', agent)}
-                className={`flex-1 py-3 rounded-xl text-sm font-medium border-2 transition-colors ${
-                  edl.realise_par === agent
-                    ? agent === 'manu' ? 'bg-blue-50 border-blue-500 text-blue-700' : 'bg-purple-50 border-purple-500 text-purple-700'
-                    : 'bg-white border-gray-200 text-gray-500'
-                }`}
-              >
-                {agent === 'manu' ? 'Manu' : 'Aliénor'}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Date constat */}
-        <div>
-          <label className="block text-sm font-medium text-gray-500 mb-1">Date du constat</label>
-          <input
-            type="date"
-            value={edl.date_constat?.split('T')[0] ?? new Date().toISOString().split('T')[0]}
-            onChange={(e) => handleFieldChange('date_constat', e.target.value)}
-            className={inputClass}
-          />
-        </div>
+        {/* Réalisé par (read-only, géré depuis la page EDL) */}
+        {edl.realise_par && (
+          <p className="text-xs text-gray-400 text-center">
+            Réalisé par {edl.realise_par === 'manu' ? 'Manu' : 'Aliénor'}
+            {edl.date_constat ? ` le ${edl.date_constat.split('T')[0]}` : ''}
+          </p>
+        )}
       </div>
     </Layout>
   );
