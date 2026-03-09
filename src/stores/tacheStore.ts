@@ -6,6 +6,7 @@ import { supabase } from '../services/supabase';
 interface TacheStore {
   taches: Tache[];
   loading: boolean;
+  lastFilters: TacheFilters | undefined;
   fetchTaches: (filters?: TacheFilters) => Promise<void>;
   updateTache: (id: string, data: Partial<Tache>) => Promise<void>;
   getCountMenages: () => Promise<{ manu: number; alienor: number }>;
@@ -15,9 +16,10 @@ interface TacheStore {
 export const useTacheStore = create<TacheStore>((set, get) => ({
   taches: [],
   loading: false,
+  lastFilters: undefined,
 
   fetchTaches: async (filters) => {
-    set({ loading: true });
+    set({ loading: true, lastFilters: filters });
     try {
       const taches = await service.fetchTaches(filters);
       set({ taches, loading: false });
@@ -27,8 +29,11 @@ export const useTacheStore = create<TacheStore>((set, get) => ({
   },
 
   updateTache: async (id, data) => {
-    await service.updateTache(id, data);
-    await get().fetchTaches();
+    const updated = await service.updateTache(id, data);
+    // Update the local array without refetching (avoids overwriting filtered views)
+    set((state) => ({
+      taches: state.taches.map((t) => (t.id === id ? updated : t)),
+    }));
   },
 
   getCountMenages: () => service.getCountMenages(),
@@ -37,7 +42,8 @@ export const useTacheStore = create<TacheStore>((set, get) => ({
     const channel = supabase
       .channel('taches-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'taches' }, () => {
-        get().fetchTaches();
+        // Re-fetch with the same filters that were last used
+        get().fetchTaches(get().lastFilters);
       })
       .subscribe();
 
