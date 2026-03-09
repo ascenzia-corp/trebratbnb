@@ -5,6 +5,7 @@ import { FilterChips } from '../components/ui/FilterChips';
 import { EmptyState } from '../components/ui/EmptyState';
 import { TacheGroup } from '../components/taches/TacheGroup';
 import { useTacheStore } from '../stores/tacheStore';
+import { useAuthStore } from '../stores/authStore';
 import type { Assignee, MomentTache, Tache } from '../types';
 
 type AssigneeFilter = 'mes_taches' | 'non_assignees' | 'toutes';
@@ -12,6 +13,7 @@ type MomentFilter = 'checkin' | 'checkout' | 'tous';
 
 export function TachesPage() {
   const { taches, loading, fetchTaches, updateTache, subscribeToChanges } = useTacheStore();
+  const agentKey = useAuthStore((s) => s.getAgentKey());
   const [assigneeFilter, setAssigneeFilter] = useState<AssigneeFilter>('toutes');
   const [momentFilter, setMomentFilter] = useState<MomentFilter>('tous');
 
@@ -38,8 +40,7 @@ export function TachesPage() {
   if (assigneeFilter === 'non_assignees') {
     filtered = filtered.filter((t) => t.assignee_a === 'non_assignee');
   } else if (assigneeFilter === 'mes_taches') {
-    // TODO: filter by current user's agent_key
-    filtered = filtered.filter((t) => t.assignee_a !== 'non_assignee');
+    filtered = filtered.filter((t) => agentKey && t.assignee_a === agentKey);
   }
 
   if (momentFilter !== 'tous') {
