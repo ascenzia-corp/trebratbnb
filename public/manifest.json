@@ -1,0 +1,21 @@
+{
+  "name": "Trébrat",
+  "short_name": "Trébrat",
+  "description": "Gestion locative Airbnb — Maison Trébrat",
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#007AFF",
+  "background_color": "#F2F2F7",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
