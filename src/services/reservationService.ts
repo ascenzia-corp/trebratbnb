@@ -101,6 +101,27 @@ export async function updateReservation(id: string, data: Partial<Reservation>):
     .single();
 
   if (error) throw error;
+
+  // Sync task dates when reservation dates change
+  if (data.date_checkin) {
+    const newCheckinDate = data.date_checkin.split('T')[0];
+    const { error: errCi } = await supabase
+      .from('taches')
+      .update({ date_echeance: newCheckinDate })
+      .eq('reservation_id', id)
+      .eq('moment', 'checkin');
+    if (errCi) console.error('Error updating checkin task dates:', errCi);
+  }
+  if (data.date_checkout) {
+    const newCheckoutDate = data.date_checkout.split('T')[0];
+    const { error: errCo } = await supabase
+      .from('taches')
+      .update({ date_echeance: newCheckoutDate })
+      .eq('reservation_id', id)
+      .eq('moment', 'checkout');
+    if (errCo) console.error('Error updating checkout task dates:', errCo);
+  }
+
   return updated;
 }
 
