@@ -11,9 +11,29 @@ import { useTacheStore } from '../stores/tacheStore';
 import { useEdlStore } from '../stores/edlStore';
 import { useAchatStore } from '../stores/achatStore';
 import { STATUT_SEJOUR_LABELS, ETAT_EDL_LABELS } from '../utils/labels';
-import { formatDateTime, formatInputDateTime } from '../utils/dateUtils';
-import { fetchReservation } from '../services/reservationService';
+import { formatDateTime, formatInputDate } from '../utils/dateUtils';
+import { fetchReservation, updateReservation as updateReservationService } from '../services/reservationService';
+import { updateCalendarEvent } from '../services/googleCalendarService';
 import type { Reservation, Assignee } from '../types';
+
+function splitDateTime(dateTimeStr: string): { date: string; time: string } {
+  if (!dateTimeStr) return { date: '', time: '' };
+  const isoMatch = dateTimeStr.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})/);
+  if (isoMatch) {
+    const time = isoMatch[2] === '00:00' ? '' : isoMatch[2];
+    return { date: isoMatch[1], time };
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateTimeStr)) {
+    return { date: dateTimeStr, time: '' };
+  }
+  return { date: '', time: '' };
+}
+
+function combineDateTime(date: string, time: string): string {
+  if (!date) return '';
+  if (!time) return `${date}T00:00`;
+  return `${date}T${time}`;
+}
 
 export function ReservationDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -24,19 +44,23 @@ export function ReservationDetailPage() {
   const { achats, fetchAchats } = useAchatStore();
   const [reservation, setReservation] = useState<Reservation | null>(null);
   const [editing, setEditing] = useState(false);
-  const [editData, setEditData] = useState({ voyageur: '', telephone: '', nb_personnes: 1, commentaires: '', date_checkin: '', date_checkout: '' });
+  const [editData, setEditData] = useState({ voyageur: '', telephone: '', nb_personnes: 1, commentaires: '', dateCheckin: '', timeCheckin: '', dateCheckout: '', timeCheckout: '' });
 
   useEffect(() => {
     if (!id) return;
     fetchReservation(id).then((r) => {
       setReservation(r);
+      const ci = splitDateTime(formatInputDate(r.date_checkin) + 'T' + r.date_checkin.match(/T(\d{2}:\d{2})/)?.[1] || '00:00');
+      const co = splitDateTime(formatInputDate(r.date_checkout) + 'T' + r.date_checkout.match(/T(\d{2}:\d{2})/)?.[1] || '00:00');
       setEditData({
         voyageur: r.voyageur,
         telephone: r.telephone ?? '',
         nb_personnes: r.nb_personnes,
         commentaires: r.commentaires ?? '',
-        date_checkin: formatInputDateTime(r.date_checkin),
-        date_checkout: formatInputDateTime(r.date_checkout),
+        dateCheckin: ci.date || formatInputDate(r.date_checkin),
+        timeCheckin: ci.time,
+        dateCheckout: co.date || formatInputDate(r.date_checkout),
+        timeCheckout: co.time,
       });
     });
     fetchTaches({ reservation_id: id });
@@ -50,15 +74,34 @@ export function ReservationDetailPage() {
   const problemCount = edls.filter((e) => e.etat === 'probleme').length;
   const edlDone = edls.filter((e) => e.realise_par !== null).length;
 
+  const isCheckoutValid = !editData.dateCheckin || !editData.dateCheckout || editData.dateCheckout >= editData.dateCheckin;
+
   const handleSaveEdit = async () => {
+    if (!isCheckoutValid) return;
+    const newCheckin = combineDateTime(editData.dateCheckin, editData.timeCheckin);
+    const newCheckout = combineDateTime(editData.dateCheckout, editData.timeCheckout);
+
     await updateReservation(reservation.id, {
       voyageur: editData.voyageur,
       telephone: editData.telephone || null,
       nb_personnes: editData.nb_personnes,
       commentaires: editData.commentaires || null,
-      date_checkin: editData.date_checkin,
-      date_checkout: editData.date_checkout,
+      date_checkin: newCheckin,
+      date_checkout: newCheckout,
     } as Partial<Reservation>);
+
+    // Update Google Calendar event if dates/times changed
+    if (reservation.google_event_id) {
+      await updateCalendarEvent(reservation.google_event_id, {
+        voyageur: editData.voyageur,
+        date_checkin: newCheckin,
+        date_checkout: newCheckout,
+        nb_personnes: editData.nb_personnes,
+        telephone: editData.telephone || undefined,
+        commentaires: editData.commentaires || undefined,
+      });
+    }
+
     const r = await fetchReservation(reservation.id);
     setReservation(r);
     setEditing(false);
@@ -117,18 +160,30 @@ export function ReservationDetailPage() {
               <input value={editData.voyageur} onChange={(e) => setEditData({ ...editData, voyageur: e.target.value })} className={inputClass} placeholder="Voyageur" />
               <input value={editData.telephone} onChange={(e) => setEditData({ ...editData, telephone: e.target.value })} className={inputClass} placeholder="Téléphone" />
               <input type="number" value={editData.nb_personnes} onChange={(e) => setEditData({ ...editData, nb_personnes: Number(e.target.value) })} className={inputClass} />
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Check-in</label>
-                  <input type="datetime-local" value={editData.date_checkin} onChange={(e) => setEditData({ ...editData, date_checkin: e.target.value })} className={inputClass} />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Check-out</label>
-                  <input type="datetime-local" value={editData.date_checkout} onChange={(e) => setEditData({ ...editData, date_checkout: e.target.value })} className={inputClass} />
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Check-in</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <input type="date" value={editData.dateCheckin} onChange={(e) => {
+                    const newDate = e.target.value;
+                    setEditData((prev) => ({
+                      ...prev,
+                      dateCheckin: newDate,
+                      dateCheckout: prev.dateCheckout && prev.dateCheckout < newDate ? newDate : prev.dateCheckout,
+                    }));
+                  }} className={inputClass} />
+                  <input type="time" value={editData.timeCheckin} onChange={(e) => setEditData({ ...editData, timeCheckin: e.target.value })} className={inputClass} />
                 </div>
               </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Check-out</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <input type="date" value={editData.dateCheckout} onChange={(e) => setEditData({ ...editData, dateCheckout: e.target.value })} min={editData.dateCheckin || undefined} className={`${inputClass} ${!isCheckoutValid ? 'border-red-400' : ''}`} />
+                  <input type="time" value={editData.timeCheckout} onChange={(e) => setEditData({ ...editData, timeCheckout: e.target.value })} className={inputClass} />
+                </div>
+                {!isCheckoutValid && <p className="text-xs text-red-500 mt-1">La date de sortie doit être postérieure à la date d'entrée</p>}
+              </div>
               <textarea value={editData.commentaires} onChange={(e) => setEditData({ ...editData, commentaires: e.target.value })} className={`${inputClass} resize-none`} rows={3} />
-              <button onClick={handleSaveEdit} className="w-full bg-[#007AFF] text-white py-3 rounded-xl font-semibold">Enregistrer</button>
+              <button onClick={handleSaveEdit} disabled={!isCheckoutValid} className="w-full bg-[#007AFF] text-white py-3 rounded-xl font-semibold disabled:opacity-50">Enregistrer</button>
             </div>
           ) : (
             <div className="space-y-2 text-sm text-gray-700">

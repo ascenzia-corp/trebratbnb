@@ -113,6 +113,50 @@ function isConfigured(): boolean {
   return Boolean(SERVICE_ACCOUNT_EMAIL && PRIVATE_KEY_RAW);
 }
 
+/** Check if a datetime string represents "no time" (midnight = T00:00) */
+function isAllDay(dateStr: string): boolean {
+  // "2026-03-15T00:00" or "2026-03-15T00:00:00"
+  return /T00:00(:00)?$/.test(dateStr) || !dateStr.includes('T');
+}
+
+/** Build start/end objects for Google Calendar (all-day vs timed) */
+function buildTimeSlot(dateStr: string) {
+  if (isAllDay(dateStr)) {
+    // All-day event: use "date" property with YYYY-MM-DD
+    const dateOnly = dateStr.split('T')[0];
+    return { date: dateOnly };
+  }
+  return { dateTime: toRFC3339(dateStr), timeZone: 'Europe/Paris' };
+}
+
+/** For all-day checkout, add one day (Google Calendar all-day end is exclusive) */
+function buildEndSlot(dateStr: string, checkinStr: string) {
+  if (isAllDay(dateStr)) {
+    const dateOnly = dateStr.split('T')[0];
+    const d = new Date(dateOnly + 'T12:00:00');
+    d.setDate(d.getDate() + 1);
+    const nextDay = d.toISOString().split('T')[0];
+    // If checkin is also all-day, end is next day; otherwise keep timed
+    if (isAllDay(checkinStr)) {
+      return { date: nextDay };
+    }
+  }
+  if (isAllDay(dateStr)) {
+    const dateOnly = dateStr.split('T')[0];
+    return { dateTime: `${dateOnly}T12:00:00`, timeZone: 'Europe/Paris' };
+  }
+  return { dateTime: toRFC3339(dateStr), timeZone: 'Europe/Paris' };
+}
+
+function buildDescription(input: CalendarEventInput): string {
+  return [
+    `Voyageur : ${input.voyageur}`,
+    `Personnes : ${input.nb_personnes}`,
+    input.telephone ? `Téléphone : ${input.telephone}` : '',
+    input.commentaires ? `\nNotes : ${input.commentaires}` : '',
+  ].filter(Boolean).join('\n');
+}
+
 export async function createCalendarEvent(input: CalendarEventInput): Promise<CalendarEventResult | null> {
   if (!isConfigured()) {
     console.warn('Google Calendar non configuré (VITE_GOOGLE_SERVICE_ACCOUNT_EMAIL / PRIVATE_KEY manquants)');
@@ -122,18 +166,11 @@ export async function createCalendarEvent(input: CalendarEventInput): Promise<Ca
   try {
     const token = await getAccessToken();
 
-    const description = [
-      `Voyageur : ${input.voyageur}`,
-      `Personnes : ${input.nb_personnes}`,
-      input.telephone ? `Téléphone : ${input.telephone}` : '',
-      input.commentaires ? `\nNotes : ${input.commentaires}` : '',
-    ].filter(Boolean).join('\n');
-
     const event = {
       summary: `🏠 ${input.voyageur} (${input.nb_personnes} pers.)`,
-      description,
-      start: { dateTime: toRFC3339(input.date_checkin), timeZone: 'Europe/Paris' },
-      end: { dateTime: toRFC3339(input.date_checkout), timeZone: 'Europe/Paris' },
+      description: buildDescription(input),
+      start: buildTimeSlot(input.date_checkin),
+      end: buildEndSlot(input.date_checkout, input.date_checkin),
     };
 
     const resp = await fetch(`${CALENDAR_API}/calendars/${encodeURIComponent(CALENDAR_ID)}/events`, {
@@ -156,6 +193,37 @@ export async function createCalendarEvent(input: CalendarEventInput): Promise<Ca
   } catch (err) {
     console.error('Failed to create calendar event:', err);
     return null;
+  }
+}
+
+export async function updateCalendarEvent(eventId: string, input: CalendarEventInput): Promise<void> {
+  if (!isConfigured()) return;
+
+  try {
+    const token = await getAccessToken();
+
+    const event = {
+      summary: `🏠 ${input.voyageur} (${input.nb_personnes} pers.)`,
+      description: buildDescription(input),
+      start: buildTimeSlot(input.date_checkin),
+      end: buildEndSlot(input.date_checkout, input.date_checkin),
+    };
+
+    const resp = await fetch(`${CALENDAR_API}/calendars/${encodeURIComponent(CALENDAR_ID)}/events/${eventId}`, {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(event),
+    });
+
+    if (!resp.ok) {
+      const err = await resp.text();
+      console.error('Google Calendar update error:', err);
+    }
+  } catch (err) {
+    console.error('Failed to update calendar event:', err);
   }
 }
 

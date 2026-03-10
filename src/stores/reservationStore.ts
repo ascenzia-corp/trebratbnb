@@ -8,7 +8,7 @@ interface ReservationStore {
   loading: boolean;
   error: string | null;
   fetchReservations: () => Promise<void>;
-  createReservation: (data: CreateReservationInput) => Promise<void>;
+  createReservation: (data: CreateReservationInput) => Promise<Reservation>;
   updateReservation: (id: string, data: Partial<Reservation>) => Promise<void>;
   deleteReservation: (id: string) => Promise<void>;
   subscribeToChanges: () => () => void;
@@ -30,8 +30,9 @@ export const useReservationStore = create<ReservationStore>((set, get) => ({
   },
 
   createReservation: async (data) => {
-    await service.createReservation(data);
+    const reservation = await service.createReservation(data);
     await get().fetchReservations();
+    return reservation;
   },
 
   updateReservation: async (id, data) => {

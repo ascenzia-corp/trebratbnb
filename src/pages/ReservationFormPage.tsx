@@ -14,8 +14,8 @@ export function ReservationFormPage() {
       <div className="mt-4">
         <ReservationForm
           onSubmit={async (data) => {
-            await createReservation(data);
-            navigate('/reservations');
+            const reservation = await createReservation(data);
+            navigate(`/reservations/${reservation.id}`);
           }}
         />
       </div>

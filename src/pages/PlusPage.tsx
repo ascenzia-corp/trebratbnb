@@ -27,8 +27,12 @@ export function PlusPage() {
     fetchAchats();
   }, [fetchReservations, fetchTaches, fetchEdls, fetchAchats]);
 
-  const nextReservation = reservations.find((r) => r.statut_sejour === 'en_cours')
-    ?? reservations.find((r) => r.statut_sejour === 'a_venir');
+  // Pick the current reservation (en_cours), or the nearest future one (a_venir) by date
+  const enCours = reservations.find((r) => r.statut_sejour === 'en_cours');
+  const nextAVenir = [...reservations]
+    .filter((r) => r.statut_sejour === 'a_venir')
+    .sort((a, b) => a.date_checkin.localeCompare(b.date_checkin))[0];
+  const nextReservation = enCours ?? nextAVenir;
 
   const todayTaches = taches.filter((t) => t.a_faire && t.statut === 'a_faire').length;
   const problemEdls = edls.filter((e) => e.etat === 'probleme').length;

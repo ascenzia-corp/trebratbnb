@@ -14,7 +14,12 @@ export function formatDateRange(checkin: string, checkout: string): string {
 }
 
 export function formatDateTime(dateStr: string): string {
-  return format(parseISO(dateStr), "d MMM yyyy 'à' HH:mm", { locale: fr });
+  const parsed = parseISO(dateStr);
+  // If time is midnight (00:00), show date only (no time was specified)
+  if (parsed.getHours() === 0 && parsed.getMinutes() === 0) {
+    return format(parsed, 'd MMM yyyy', { locale: fr });
+  }
+  return format(parsed, "d MMM yyyy 'à' HH:mm", { locale: fr });
 }
 
 export function formatInputDate(dateStr: string): string {

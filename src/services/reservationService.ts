@@ -7,7 +7,7 @@ export async function fetchReservations(): Promise<Reservation[]> {
   const { data, error } = await supabase
     .from('reservations')
     .select('*')
-    .order('date_checkin', { ascending: false });
+    .order('date_checkin', { ascending: true });
 
   if (error) throw error;
   return data ?? [];

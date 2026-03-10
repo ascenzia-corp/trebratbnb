@@ -47,14 +47,21 @@ export function TachesPage() {
     filtered = filtered.filter((t) => t.moment === (momentFilter as MomentTache));
   }
 
-  // Group by reservation
-  const groups = new Map<string, { voyageur: string; taches: Tache[] }>();
+  // Group by reservation, sorted chronologically by earliest task date
+  const groupMap = new Map<string, { voyageur: string; taches: Tache[]; earliestDate: string }>();
   for (const t of filtered) {
     const key = t.reservation_id;
     const voyageur = t.reservation?.voyageur ?? 'Sans réservation';
-    if (!groups.has(key)) groups.set(key, { voyageur, taches: [] });
-    groups.get(key)!.taches.push(t);
+    if (!groupMap.has(key)) groupMap.set(key, { voyageur, taches: [], earliestDate: t.date_echeance ?? '9999-12-31' });
+    const group = groupMap.get(key)!;
+    group.taches.push(t);
+    if (t.date_echeance && t.date_echeance < group.earliestDate) {
+      group.earliestDate = t.date_echeance;
+    }
   }
+  const groups = new Map(
+    [...groupMap.entries()].sort(([, a], [, b]) => a.earliestDate.localeCompare(b.earliestDate))
+  );
 
   return (
     <Layout>
