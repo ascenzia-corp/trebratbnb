@@ -12,7 +12,7 @@ import { useEdlStore } from '../stores/edlStore';
 import { useAchatStore } from '../stores/achatStore';
 import { STATUT_SEJOUR_LABELS, ETAT_EDL_LABELS } from '../utils/labels';
 import { formatDateTime, formatInputDate } from '../utils/dateUtils';
-import { fetchReservation, updateReservation as updateReservationService } from '../services/reservationService';
+import { fetchReservation } from '../services/reservationService';
 import { updateCalendarEvent } from '../services/googleCalendarService';
 import type { Reservation, Assignee } from '../types';
 
@@ -50,8 +50,8 @@ export function ReservationDetailPage() {
     if (!id) return;
     fetchReservation(id).then((r) => {
       setReservation(r);
-      const ci = splitDateTime(formatInputDate(r.date_checkin) + 'T' + r.date_checkin.match(/T(\d{2}:\d{2})/)?.[1] || '00:00');
-      const co = splitDateTime(formatInputDate(r.date_checkout) + 'T' + r.date_checkout.match(/T(\d{2}:\d{2})/)?.[1] || '00:00');
+      const ci = splitDateTime(r.date_checkin);
+      const co = splitDateTime(r.date_checkout);
       setEditData({
         voyageur: r.voyageur,
         telephone: r.telephone ?? '',
