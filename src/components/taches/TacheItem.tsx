@@ -14,9 +14,10 @@ export function TacheItem({ tache, onToggleDone, onAssign }: Props) {
   const moment = MOMENT_TACHE_LABELS[tache.moment];
   const assignee = ASSIGNEE_LABELS[tache.assignee_a];
   const isDone = tache.statut === 'fait';
+  const needsAttention = tache.a_faire && !isDone && tache.assignee_a === 'non_assignee';
 
   return (
-    <div className={`bg-white rounded-2xl p-4 shadow-sm ${isDone ? 'opacity-60' : ''}`}>
+    <div className={`bg-white rounded-2xl p-4 shadow-sm ${isDone ? 'opacity-60' : ''} ${needsAttention ? 'border-l-4 border-orange-400 bg-orange-50/50' : ''}`}>
       <div className="flex items-start gap-3">
         <button
           onClick={() => onToggleDone(tache.id)}
@@ -33,6 +34,9 @@ export function TacheItem({ tache, onToggleDone, onAssign }: Props) {
           <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
             <Badge {...moment} />
             <Badge {...assignee} />
+            {needsAttention && (
+              <span className="text-xs font-semibold px-1.5 py-0.5 rounded bg-orange-100 text-orange-600">À assigner</span>
+            )}
             {tache.date_echeance && (
               <span className="text-xs text-gray-400">
                 📅 {formatDateShort(tache.date_echeance)}
