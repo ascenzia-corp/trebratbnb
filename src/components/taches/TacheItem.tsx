@@ -58,6 +58,14 @@ export function TacheItem({ tache, onToggleDone, onAssign }: Props) {
                 Aliénor
               </button>
             )}
+            {tache.assignee_a !== 'non_assignee' && (
+              <button
+                onClick={() => onAssign(tache.id, 'non_assignee')}
+                className="text-xs px-2 py-1 rounded-lg bg-gray-100 text-gray-400"
+              >
+                ✕
+              </button>
+            )}
           </div>
         )}
       </div>
