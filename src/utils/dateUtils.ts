@@ -44,3 +44,34 @@ export function isReservationTerminee(checkout: string): boolean {
 }
 
 export { isToday, isTomorrow, parseISO };
+
+/**
+ * Split an ISO datetime string into local date (YYYY-MM-DD) and time (HH:MM).
+ * Converts from UTC to the browser's local timezone (Europe/Paris).
+ */
+export function splitDateTime(dateTimeStr: string): { date: string; time: string } {
+  if (!dateTimeStr) return { date: '', time: '' };
+  const parsed = new Date(dateTimeStr);
+  if (isNaN(parsed.getTime())) return { date: '', time: '' };
+  const year = parsed.getFullYear();
+  const month = String(parsed.getMonth() + 1).padStart(2, '0');
+  const day = String(parsed.getDate()).padStart(2, '0');
+  const hours = String(parsed.getHours()).padStart(2, '0');
+  const minutes = String(parsed.getMinutes()).padStart(2, '0');
+  const date = `${year}-${month}-${day}`;
+  const time = (hours === '00' && minutes === '00') ? '' : `${hours}:${minutes}`;
+  return { date, time };
+}
+
+/**
+ * Combine a local date (YYYY-MM-DD) and time (HH:MM) into an ISO string.
+ * The date+time is interpreted as local (Europe/Paris) and converted to UTC ISO.
+ * For no-time (all-day), returns "YYYY-MM-DDT00:00" as-is (no TZ conversion).
+ */
+export function combineDateTime(date: string, time: string): string {
+  if (!date) return '';
+  if (!time) return `${date}T00:00`;
+  // new Date("YYYY-MM-DDTHH:MM") interprets as local time
+  const local = new Date(`${date}T${time}`);
+  return local.toISOString();
+}

@@ -1,31 +1,11 @@
 import { useState } from 'react';
 import type { CreateReservationInput } from '../../types';
+import { splitDateTime, combineDateTime } from '../../utils/dateUtils';
 
 interface Props {
   onSubmit: (data: CreateReservationInput) => Promise<void>;
   initial?: Partial<CreateReservationInput>;
   submitLabel?: string;
-}
-
-function splitDateTime(dateTimeStr: string): { date: string; time: string } {
-  if (!dateTimeStr) return { date: '', time: '' };
-  // Handle ISO format "2026-03-15T14:00:00+..." or "2026-03-15T14:00"
-  const isoMatch = dateTimeStr.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})/);
-  if (isoMatch) {
-    const time = isoMatch[2] === '00:00' ? '' : isoMatch[2];
-    return { date: isoMatch[1], time };
-  }
-  // Handle date-only "2026-03-15"
-  if (/^\d{4}-\d{2}-\d{2}$/.test(dateTimeStr)) {
-    return { date: dateTimeStr, time: '' };
-  }
-  return { date: '', time: '' };
-}
-
-function combineDateTime(date: string, time: string): string {
-  if (!date) return '';
-  if (!time) return `${date}T00:00`;
-  return `${date}T${time}`;
 }
 
 export function ReservationForm({ onSubmit, initial, submitLabel = 'Créer' }: Props) {

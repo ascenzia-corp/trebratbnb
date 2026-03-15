@@ -11,30 +11,11 @@ import { useTacheStore } from '../stores/tacheStore';
 import { useEdlStore } from '../stores/edlStore';
 import { useAchatStore } from '../stores/achatStore';
 import { STATUT_SEJOUR_LABELS, ETAT_EDL_LABELS } from '../utils/labels';
-import { formatDateTime, formatInputDate } from '../utils/dateUtils';
+import { formatDateTime, formatInputDate, splitDateTime, combineDateTime } from '../utils/dateUtils';
 import { fetchReservation } from '../services/reservationService';
-import { updateCalendarEvent } from '../services/googleCalendarService';
+import { updateCalendarEvent, createCalendarEvent } from '../services/googleCalendarService';
 import { useAuthStore } from '../stores/authStore';
 import type { Reservation, Assignee } from '../types';
-
-function splitDateTime(dateTimeStr: string): { date: string; time: string } {
-  if (!dateTimeStr) return { date: '', time: '' };
-  const isoMatch = dateTimeStr.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})/);
-  if (isoMatch) {
-    const time = isoMatch[2] === '00:00' ? '' : isoMatch[2];
-    return { date: isoMatch[1], time };
-  }
-  if (/^\d{4}-\d{2}-\d{2}$/.test(dateTimeStr)) {
-    return { date: dateTimeStr, time: '' };
-  }
-  return { date: '', time: '' };
-}
-
-function combineDateTime(date: string, time: string): string {
-  if (!date) return '';
-  if (!time) return `${date}T00:00`;
-  return `${date}T${time}`;
-}
 
 export function ReservationDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -93,16 +74,22 @@ export function ReservationDetailPage() {
       date_checkout: newCheckout,
     } as Partial<Reservation>);
 
-    // Update Google Calendar event if dates/times changed
+    // Sync Google Calendar: update existing event or create if missing
+    const calendarInput = {
+      voyageur: editData.voyageur,
+      date_checkin: newCheckin,
+      date_checkout: newCheckout,
+      nb_personnes: editData.nb_personnes,
+      telephone: editData.telephone || undefined,
+      commentaires: editData.commentaires || undefined,
+    };
     if (reservation.google_event_id) {
-      await updateCalendarEvent(reservation.google_event_id, {
-        voyageur: editData.voyageur,
-        date_checkin: newCheckin,
-        date_checkout: newCheckout,
-        nb_personnes: editData.nb_personnes,
-        telephone: editData.telephone || undefined,
-        commentaires: editData.commentaires || undefined,
-      });
+      await updateCalendarEvent(reservation.google_event_id, calendarInput);
+    } else {
+      const result = await createCalendarEvent(calendarInput);
+      if (result?.eventId) {
+        await updateReservation(reservation.id, { google_event_id: result.eventId } as Partial<Reservation>);
+      }
     }
 
     const r = await fetchReservation(reservation.id);
