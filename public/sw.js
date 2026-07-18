@@ -1,4 +1,4 @@
-const CACHE_NAME = 'trebrat-v1';
+const CACHE_NAME = 'trebrat-v2';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -7,7 +7,7 @@ const ASSETS_TO_CACHE = [
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS_TO_CACHE))
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS_TO_CACHE)).catch(() => {})
   );
   self.skipWaiting();
 });
@@ -22,15 +22,39 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Network-first strategy for API calls
-  if (event.request.url.includes('supabase')) {
-    event.respondWith(fetch(event.request));
+  const request = event.request;
+  const url = new URL(request.url);
+
+  // Only handle same-origin GET requests.
+  // Everything else (Supabase, Google APIs, POST, etc.) goes straight to the network
+  // without interception — avoids "FetchEvent.respondWith received an error".
+  if (request.method !== 'GET' || url.origin !== self.location.origin) {
     return;
   }
 
-  // Cache-first for static assets
+  // Navigation requests: network-first, fall back to cached index.html when offline
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request).catch(() =>
+        caches.match('/index.html').then((cached) => cached || Response.error())
+      )
+    );
+    return;
+  }
+
+  // Static assets: network-first with cache fallback, cache successful responses
   event.respondWith(
-    caches.match(event.request).then((cached) => cached || fetch(event.request))
+    fetch(request)
+      .then((response) => {
+        if (response && response.ok) {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy)).catch(() => {});
+        }
+        return response;
+      })
+      .catch(() =>
+        caches.match(request).then((cached) => cached || Response.error())
+      )
   );
 });
 
