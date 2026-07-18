@@ -11,7 +11,7 @@ export function PageHeader({ title, showBack = false, rightAction }: PageHeaderP
   const navigate = useNavigate();
 
   return (
-    <div className="sticky top-0 z-30 bg-[#F2F2F7]/80 backdrop-blur-md px-4 pt-3 pb-2">
+    <div className="sticky top-0 z-30 bg-[#F2F2F7]/80 backdrop-blur-md px-4 pt-safe pb-2">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           {showBack && (

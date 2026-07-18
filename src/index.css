@@ -22,6 +22,11 @@ html, body, #root {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+/* Header top padding = base spacing + the notch / Dynamic Island safe area */
+.pt-safe {
+  padding-top: calc(env(safe-area-inset-top, 0px) + 0.75rem);
+}
+
 .card-ios {
   background: white;
   border-radius: 1rem;
