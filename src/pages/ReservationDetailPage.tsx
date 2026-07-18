@@ -60,8 +60,12 @@ export function ReservationDetailPage() {
     reservation.statut_sejour
   );
   const statut = STATUT_SEJOUR_LABELS[statutSejour];
-  const problemCount = edls.filter((e) => e.etat === 'probleme').length;
-  const edlDone = edls.filter((e) => e.realise_par !== null).length;
+  // The EDL store is shared and may hold entries from other reservations
+  // (e.g. the dashboard loads them all). Only count this reservation's rooms.
+  const myEdls = edls.filter((e) => e.reservation_id === reservation.id);
+  const problemCount = myEdls.filter((e) => e.etat === 'probleme').length;
+  const edlDone = myEdls.filter((e) => e.realise_par !== null).length;
+  const edlTotal = myEdls.length || 18;
 
   const isCheckoutValid = !editData.dateCheckin || !editData.dateCheckout || editData.dateCheckout >= editData.dateCheckin;
 
@@ -217,9 +221,9 @@ export function ReservationDetailPage() {
         </div>
 
         {/* EDL summary */}
-        <Card onClick={() => navigate('/etats-des-lieux')}>
+        <Card onClick={() => navigate(`/etats-des-lieux?reservation=${reservation.id}`)}>
           <h2 className="text-lg font-bold text-gray-900 mb-1">🏡 États des lieux</h2>
-          <p className="text-sm text-gray-500">{edlDone}/18 réalisés</p>
+          <p className="text-sm text-gray-500">{edlDone}/{edlTotal} réalisés</p>
           {problemCount > 0 && (
             <p className="text-sm text-red-500 mt-1">{ETAT_EDL_LABELS.probleme.label} : {problemCount} pièce{problemCount > 1 ? 's' : ''}</p>
           )}

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Layout } from '../components/layout/Layout';
 import { PageHeader } from '../components/layout/PageHeader';
 import { EmptyState } from '../components/ui/EmptyState';
@@ -12,7 +13,12 @@ import type { Reservation } from '../types';
 export function EdlPage() {
   const { edls, loading, fetchEdls, updateEdl, subscribeToChanges } = useEdlStore();
   const { reservations, fetchReservations } = useReservationStore();
-  const [selectedReservation, setSelectedReservation] = useState<string>('');
+  const [searchParams] = useSearchParams();
+  // A reservation can be pre-selected via ?reservation=<id> (e.g. coming from a
+  // reservation detail page). Otherwise we auto-select the current/next one.
+  const [selectedReservation, setSelectedReservation] = useState<string>(
+    searchParams.get('reservation') ?? ''
+  );
   const [updatingAgent, setUpdatingAgent] = useState(false);
 
   useEffect(() => {
