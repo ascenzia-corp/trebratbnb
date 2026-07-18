@@ -5,6 +5,7 @@ import { PageHeader } from '../components/layout/PageHeader';
 import { EdlEtatSelector } from '../components/edl/EdlEtatSelector';
 import { PhotoGallery } from '../components/ui/PhotoGallery';
 import { PIECE_LABELS } from '../utils/labels';
+import { formatDateFull } from '../utils/dateUtils';
 import { fetchEdl } from '../services/edlService';
 import { useEdlStore } from '../stores/edlStore';
 import type { EtatDesLieux, EtatEdl } from '../types';
@@ -107,7 +108,7 @@ export function EdlDetailPage() {
         {edl.realise_par && (
           <p className="text-xs text-gray-400 text-center">
             Réalisé par {edl.realise_par === 'manu' ? 'Manu' : 'Aliénor'}
-            {edl.date_constat ? ` le ${edl.date_constat.split('T')[0]}` : ''}
+            {edl.date_constat ? ` le ${formatDateFull(edl.date_constat)}` : ''}
           </p>
         )}
       </div>

@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { Camera, Check } from 'lucide-react';
 import { Badge } from '../ui/Badge';
 import { PIECE_LABELS, ETAT_EDL_LABELS } from '../../utils/labels';
+import { formatDateShort } from '../../utils/dateUtils';
 import type { EtatDesLieux } from '../../types';
 
 interface Props {
@@ -42,7 +43,10 @@ export function EdlPieceItem({ edl, onToggleRealise, saving }: Props) {
       </div>
       <div className="flex items-center gap-2 shrink-0">
         {realise && edl.realise_par && (
-          <span className="text-[10px] text-gray-400">{edl.realise_par === 'manu' ? 'Manu' : 'Aliénor'}</span>
+          <span className="text-[10px] text-gray-400 text-right leading-tight">
+            {edl.realise_par === 'manu' ? 'Manu' : 'Aliénor'}
+            {edl.date_constat && <><br />{formatDateShort(edl.date_constat)}</>}
+          </span>
         )}
         {hasPhotos && <Camera size={14} className="text-gray-400" />}
         <Badge {...etat} />
