@@ -7,6 +7,7 @@ import { supabase } from '../services/supabase';
 interface EdlStore {
   edls: EtatDesLieux[];
   loading: boolean;
+  lastReservationId?: string;
   fetchEdls: (reservationId?: string) => Promise<void>;
   updateEdl: (id: string, data: Partial<EtatDesLieux>) => Promise<void>;
   uploadPhoto: (edlId: string, file: File) => Promise<void>;
@@ -19,7 +20,7 @@ export const useEdlStore = create<EdlStore>((set, get) => ({
   loading: false,
 
   fetchEdls: async (reservationId) => {
-    set({ loading: true });
+    set({ loading: true, lastReservationId: reservationId });
     try {
       const edls = await service.fetchEdls(reservationId);
       set({ edls, loading: false });
@@ -48,7 +49,9 @@ export const useEdlStore = create<EdlStore>((set, get) => ({
     const channel = supabase
       .channel('edl-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'etats_des_lieux' }, () => {
-        get().fetchEdls();
+        // Refetch keeping the current reservation filter, otherwise the list
+        // would reload EDLs from every reservation at once.
+        get().fetchEdls(get().lastReservationId);
       })
       .subscribe();
 
