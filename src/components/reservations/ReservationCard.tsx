@@ -3,7 +3,7 @@ import { Users, AlertTriangle } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { Badge } from '../ui/Badge';
 import { STATUT_SEJOUR_LABELS } from '../../utils/labels';
-import { formatDateRange } from '../../utils/dateUtils';
+import { formatDateRange, computeStatutSejour } from '../../utils/dateUtils';
 import type { Reservation } from '../../types';
 
 interface Props {
@@ -12,7 +12,12 @@ interface Props {
 
 export function ReservationCard({ reservation }: Props) {
   const navigate = useNavigate();
-  const statut = STATUT_SEJOUR_LABELS[reservation.statut_sejour];
+  const statutSejour = computeStatutSejour(
+    reservation.date_checkin,
+    reservation.date_checkout,
+    reservation.statut_sejour
+  );
+  const statut = STATUT_SEJOUR_LABELS[statutSejour];
   const missingInfo = !reservation.telephone || !reservation.nb_personnes;
 
   return (

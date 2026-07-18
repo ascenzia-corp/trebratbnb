@@ -1,5 +1,6 @@
 import { format, parseISO, isToday, isTomorrow, isPast, isFuture, isWithinInterval } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import type { StatutSejour } from '../types';
 
 export function formatDateShort(dateStr: string): string {
   return format(parseISO(dateStr), 'd MMM', { locale: fr });
@@ -28,6 +29,30 @@ export function formatInputDate(dateStr: string): string {
 
 export function formatInputDateTime(dateStr: string): string {
   return format(parseISO(dateStr), "yyyy-MM-dd'T'HH:mm");
+}
+
+/**
+ * Compute the effective stay status from the check-in / check-out dates and
+ * the current date. A stored "annule" status is always preserved. This is the
+ * source of truth for display and filtering — the DB `statut_sejour` column is
+ * only a default and is not kept in sync as time passes.
+ */
+export function computeStatutSejour(
+  checkin: string,
+  checkout: string,
+  stored?: StatutSejour
+): StatutSejour {
+  if (stored === 'annule') return 'annule';
+  const now = new Date();
+  const start = new Date(checkin);
+  const end = new Date(checkout);
+  // All-day check-out (midnight): the stay runs until the end of that day.
+  if (end.getHours() === 0 && end.getMinutes() === 0) {
+    end.setHours(23, 59, 59, 999);
+  }
+  if (now < start) return 'a_venir';
+  if (now > end) return 'termine';
+  return 'en_cours';
 }
 
 export function isReservationEnCours(checkin: string, checkout: string): boolean {

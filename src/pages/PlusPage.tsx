@@ -9,7 +9,7 @@ import { useTacheStore } from '../stores/tacheStore';
 import { useEdlStore } from '../stores/edlStore';
 import { useAchatStore } from '../stores/achatStore';
 import { useAuthStore } from '../stores/authStore';
-import { formatDateRange } from '../utils/dateUtils';
+import { formatDateRange, computeStatutSejour } from '../utils/dateUtils';
 
 export function PlusPage() {
   const navigate = useNavigate();
@@ -27,11 +27,16 @@ export function PlusPage() {
     fetchAchats();
   }, [fetchReservations, fetchTaches, fetchEdls, fetchAchats]);
 
-  // Pick the current reservation (en_cours), or the nearest future one (a_venir) by date
-  const enCours = reservations.find((r) => r.statut_sejour === 'en_cours');
-  const nextAVenir = [...reservations]
-    .filter((r) => r.statut_sejour === 'a_venir')
-    .sort((a, b) => a.date_checkin.localeCompare(b.date_checkin))[0];
+  // Pick the current reservation (en_cours), or the nearest future one (a_venir) by date.
+  // Status is computed from dates so past stays are never treated as upcoming.
+  const withStatut = reservations.map((r) => ({
+    r,
+    statut: computeStatutSejour(r.date_checkin, r.date_checkout, r.statut_sejour),
+  }));
+  const enCours = withStatut.find((x) => x.statut === 'en_cours')?.r;
+  const nextAVenir = withStatut
+    .filter((x) => x.statut === 'a_venir')
+    .sort((a, b) => a.r.date_checkin.localeCompare(b.r.date_checkin))[0]?.r;
   const nextReservation = enCours ?? nextAVenir;
 
   const todayTaches = taches.filter((t) => t.a_faire && t.statut === 'a_faire').length;

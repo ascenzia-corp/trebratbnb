@@ -7,13 +7,14 @@ import { FAB } from '../components/ui/FAB';
 import { EmptyState } from '../components/ui/EmptyState';
 import { ReservationCard } from '../components/reservations/ReservationCard';
 import { useReservationStore } from '../stores/reservationStore';
-import type { StatutSejour } from '../types';
+import { computeStatutSejour } from '../utils/dateUtils';
 
-type FilterValue = 'a_venir' | 'en_cours' | 'tous';
+type FilterValue = 'a_venir' | 'en_cours' | 'termine' | 'tous';
 
 const filterChips: { value: FilterValue; label: string }[] = [
   { value: 'a_venir', label: 'À venir' },
   { value: 'en_cours', label: 'En cours' },
+  { value: 'termine', label: 'Terminées' },
   { value: 'tous', label: 'Tous' },
 ];
 
@@ -28,10 +29,18 @@ export function ReservationsPage() {
     return unsub;
   }, [fetchReservations, subscribeToChanges]);
 
-  const filtered = reservations.filter((r) => {
-    if (filter === 'tous') return true;
-    return r.statut_sejour === (filter as StatutSejour);
-  });
+  const filtered = reservations
+    .filter((r) => {
+      if (filter === 'tous') return true;
+      const statut = computeStatutSejour(r.date_checkin, r.date_checkout, r.statut_sejour);
+      return statut === filter;
+    })
+    // Terminées: show most recent first; others keep chronological (soonest first)
+    .sort((a, b) =>
+      filter === 'termine'
+        ? b.date_checkin.localeCompare(a.date_checkin)
+        : a.date_checkin.localeCompare(b.date_checkin)
+    );
 
   return (
     <Layout>
