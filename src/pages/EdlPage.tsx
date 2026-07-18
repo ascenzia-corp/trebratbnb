@@ -5,7 +5,8 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { EdlPieceItem } from '../components/edl/EdlPieceItem';
 import { useEdlStore } from '../stores/edlStore';
 import { useReservationStore } from '../stores/reservationStore';
-import { PIECES_ORDERED } from '../utils/labels';
+import { PIECES_ORDERED, STATUT_SEJOUR_LABELS } from '../utils/labels';
+import { computeStatutSejour } from '../utils/dateUtils';
 import type { Reservation } from '../types';
 
 export function EdlPage() {
@@ -23,8 +24,10 @@ export function EdlPage() {
   useEffect(() => {
     // Auto-select the current or next upcoming reservation
     if (reservations.length && !selectedReservation) {
-      const active = reservations.find((r) => r.statut_sejour === 'en_cours')
-        ?? reservations.find((r) => r.statut_sejour === 'a_venir');
+      const statutOf = (r: Reservation) =>
+        computeStatutSejour(r.date_checkin, r.date_checkout, r.statut_sejour);
+      const active = reservations.find((r) => statutOf(r) === 'en_cours')
+        ?? reservations.find((r) => statutOf(r) === 'a_venir');
       if (active) {
         setSelectedReservation(active.id);
       }
@@ -75,7 +78,7 @@ export function EdlPage() {
           <option value="">Sélectionner une réservation</option>
           {reservations.map((r: Reservation) => (
             <option key={r.id} value={r.id}>
-              {r.voyageur} ({r.statut_sejour === 'en_cours' ? 'En cours' : r.statut_sejour === 'a_venir' ? 'À venir' : r.statut_sejour})
+              {r.voyageur} ({STATUT_SEJOUR_LABELS[computeStatutSejour(r.date_checkin, r.date_checkout, r.statut_sejour)].label})
             </option>
           ))}
         </select>

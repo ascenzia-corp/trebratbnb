@@ -11,7 +11,7 @@ import { useTacheStore } from '../stores/tacheStore';
 import { useEdlStore } from '../stores/edlStore';
 import { useAchatStore } from '../stores/achatStore';
 import { STATUT_SEJOUR_LABELS, ETAT_EDL_LABELS } from '../utils/labels';
-import { formatDateTime, formatInputDate, splitDateTime, combineDateTime } from '../utils/dateUtils';
+import { formatDateTime, formatInputDate, splitDateTime, combineDateTime, computeStatutSejour } from '../utils/dateUtils';
 import { fetchReservation } from '../services/reservationService';
 import { updateCalendarEvent, createCalendarEvent } from '../services/googleCalendarService';
 import { useAuthStore } from '../stores/authStore';
@@ -54,7 +54,12 @@ export function ReservationDetailPage() {
 
   if (!reservation) return <Layout><div className="text-center py-8 text-gray-400">Chargement...</div></Layout>;
 
-  const statut = STATUT_SEJOUR_LABELS[reservation.statut_sejour];
+  const statutSejour = computeStatutSejour(
+    reservation.date_checkin,
+    reservation.date_checkout,
+    reservation.statut_sejour
+  );
+  const statut = STATUT_SEJOUR_LABELS[statutSejour];
   const problemCount = edls.filter((e) => e.etat === 'probleme').length;
   const edlDone = edls.filter((e) => e.realise_par !== null).length;
 
@@ -229,7 +234,7 @@ export function ReservationDetailPage() {
         )}
 
         {/* Cancel button */}
-        {reservation.statut_sejour !== 'annule' && reservation.statut_sejour !== 'termine' && (
+        {statutSejour !== 'annule' && statutSejour !== 'termine' && (
           <button
             onClick={handleCancel}
             className="w-full flex items-center justify-center gap-2 text-red-500 bg-red-50 py-3 rounded-xl font-medium"
