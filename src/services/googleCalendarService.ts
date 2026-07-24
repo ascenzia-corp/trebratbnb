@@ -65,6 +65,18 @@ async function createSignedJwt(): Promise<string> {
   return `${header}.${payload}.${base64url(new Uint8Array(signature))}`;
 }
 
+// --- Fetch with timeout (so a hanging network call can never block the app) ---
+
+async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = 8000): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // --- Token cache ---
 
 let cachedToken: { token: string; expires: number } | null = null;
@@ -75,7 +87,7 @@ async function getAccessToken(): Promise<string> {
   }
 
   const jwt = await createSignedJwt();
-  const resp = await fetch(TOKEN_URL, {
+  const resp = await fetchWithTimeout(TOKEN_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`,
@@ -173,7 +185,7 @@ export async function createCalendarEvent(input: CalendarEventInput): Promise<Ca
       end: buildEndSlot(input.date_checkout, input.date_checkin),
     };
 
-    const resp = await fetch(`${CALENDAR_API}/calendars/${encodeURIComponent(CALENDAR_ID)}/events`, {
+    const resp = await fetchWithTimeout(`${CALENDAR_API}/calendars/${encodeURIComponent(CALENDAR_ID)}/events`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -209,7 +221,7 @@ export async function updateCalendarEvent(eventId: string, input: CalendarEventI
       end: buildEndSlot(input.date_checkout, input.date_checkin),
     };
 
-    const resp = await fetch(`${CALENDAR_API}/calendars/${encodeURIComponent(CALENDAR_ID)}/events/${eventId}`, {
+    const resp = await fetchWithTimeout(`${CALENDAR_API}/calendars/${encodeURIComponent(CALENDAR_ID)}/events/${eventId}`, {
       method: 'PUT',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -232,7 +244,7 @@ export async function deleteCalendarEvent(eventId: string): Promise<void> {
 
   try {
     const token = await getAccessToken();
-    await fetch(`${CALENDAR_API}/calendars/${encodeURIComponent(CALENDAR_ID)}/events/${eventId}`, {
+    await fetchWithTimeout(`${CALENDAR_API}/calendars/${encodeURIComponent(CALENDAR_ID)}/events/${eventId}`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` },
     });

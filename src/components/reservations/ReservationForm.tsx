@@ -20,6 +20,7 @@ export function ReservationForm({ onSubmit, initial, submitLabel = 'Créer' }: P
   const [timeCheckout, setTimeCheckout] = useState(initialCheckout.time);
   const [commentaires, setCommentaires] = useState(initial?.commentaires ?? '');
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const isCheckoutValid = !dateCheckin || !dateCheckout || dateCheckout >= dateCheckin;
 
@@ -27,6 +28,7 @@ export function ReservationForm({ onSubmit, initial, submitLabel = 'Créer' }: P
     e.preventDefault();
     if (!voyageur || !dateCheckin || !dateCheckout || !isCheckoutValid) return;
     setSubmitting(true);
+    setError(null);
     try {
       await onSubmit({
         voyageur,
@@ -36,6 +38,8 @@ export function ReservationForm({ onSubmit, initial, submitLabel = 'Créer' }: P
         date_checkout: combineDateTime(dateCheckout, timeCheckout),
         commentaires: commentaires || undefined,
       });
+    } catch (err) {
+      setError((err as Error)?.message || 'Une erreur est survenue. Veuillez réessayer.');
     } finally {
       setSubmitting(false);
     }
@@ -145,12 +149,16 @@ export function ReservationForm({ onSubmit, initial, submitLabel = 'Créer' }: P
         />
       </div>
 
+      {error && (
+        <p className="text-sm text-red-500 bg-red-50 rounded-xl px-4 py-3">{error}</p>
+      )}
+
       <button
         type="submit"
         disabled={submitting || !voyageur || !dateCheckin || !dateCheckout || !isCheckoutValid}
         className="w-full bg-[#007AFF] text-white py-3.5 rounded-xl font-semibold text-base disabled:opacity-50 active:scale-[0.98] transition-transform"
       >
-        {submitting ? '...' : submitLabel}
+        {submitting ? 'Création...' : submitLabel}
       </button>
     </form>
   );
