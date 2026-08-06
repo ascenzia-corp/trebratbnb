@@ -18,6 +18,8 @@ export default async function handler(_req: unknown, res: any) {
     return;
   }
 
+  const pingedAt = new Date().toISOString();
+
   try {
     // A tiny read against the REST API. Any request reaching the project counts
     // as activity — we don't care about the rows, just that the call succeeds.
@@ -28,16 +30,17 @@ export default async function handler(_req: unknown, res: any) {
       },
     });
 
-    res.status(200).json({
-      ok: true,
-      supabaseStatus: response.status,
-      pingedAt: new Date().toISOString(),
-    });
+    // Logged so each run is visible in Vercel's runtime logs — this is how we
+    // confirm the cron actually fires (and catch a paused project early).
+    const healthy = response.status === 200;
+    console.log(
+      `[keep-alive] ${pingedAt} supabaseStatus=${response.status} ${healthy ? 'OK' : 'UNEXPECTED — project may be paused'}`
+    );
+
+    res.status(200).json({ ok: healthy, supabaseStatus: response.status, pingedAt });
   } catch (error) {
-    res.status(200).json({
-      ok: false,
-      error: error instanceof Error ? error.message : String(error),
-      pingedAt: new Date().toISOString(),
-    });
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`[keep-alive] ${pingedAt} FAILED — ${message}`);
+    res.status(200).json({ ok: false, error: message, pingedAt });
   }
 }
