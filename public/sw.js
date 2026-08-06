@@ -1,60 +1,24 @@
-const CACHE_NAME = 'trebrat-v2';
-const ASSETS_TO_CACHE = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-];
+// Minimal service worker for Trébrat.
+//
+// IMPORTANT: this SW intentionally has NO 'fetch' handler. It never intercepts
+// network requests, so it can never break login or any Supabase/Google call.
+// (A previous cache-first fetch handler caused "Load failed" errors.)
+// It only enables PWA install + push notifications, and cleans up old caches.
 
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS_TO_CACHE)).catch(() => {})
-  );
+const CACHE_NAME = 'trebrat-v3';
+
+self.addEventListener('install', () => {
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)))
-    )
-  );
-  self.clients.claim();
-});
-
-self.addEventListener('fetch', (event) => {
-  const request = event.request;
-  const url = new URL(request.url);
-
-  // Only handle same-origin GET requests.
-  // Everything else (Supabase, Google APIs, POST, etc.) goes straight to the network
-  // without interception — avoids "FetchEvent.respondWith received an error".
-  if (request.method !== 'GET' || url.origin !== self.location.origin) {
-    return;
-  }
-
-  // Navigation requests: network-first, fall back to cached index.html when offline
-  if (request.mode === 'navigate') {
-    event.respondWith(
-      fetch(request).catch(() =>
-        caches.match('/index.html').then((cached) => cached || Response.error())
-      )
-    );
-    return;
-  }
-
-  // Static assets: network-first with cache fallback, cache successful responses
-  event.respondWith(
-    fetch(request)
-      .then((response) => {
-        if (response && response.ok) {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy)).catch(() => {});
-        }
-        return response;
-      })
-      .catch(() =>
-        caches.match(request).then((cached) => cached || Response.error())
-      )
+    (async () => {
+      // Remove every cache left over from older versions that intercepted fetches.
+      const keys = await caches.keys();
+      await Promise.all(keys.map((key) => caches.delete(key)));
+      await self.clients.claim();
+    })()
   );
 });
 
@@ -72,7 +36,8 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  event.waitUntil(
-    self.clients.openWindow('/')
-  );
+  event.waitUntil(self.clients.openWindow('/'));
 });
+
+// Reference CACHE_NAME so linters don't flag it; kept for clarity/versioning.
+void CACHE_NAME;

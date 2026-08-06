@@ -1,6 +1,21 @@
 import { useState } from 'react';
 import { useAuthStore } from '../stores/authStore';
 
+function friendlyError(err: unknown): string {
+  const msg = (err as Error)?.message ?? '';
+  // Network-level failures (Safari says "Load failed", Chrome "Failed to fetch")
+  if (/load failed|failed to fetch|networkerror|fetch/i.test(msg)) {
+    return 'Connexion au serveur impossible. Vérifiez votre connexion internet et réessayez.';
+  }
+  if (/invalid login credentials/i.test(msg)) {
+    return 'Email ou mot de passe incorrect.';
+  }
+  if (/email not confirmed/i.test(msg)) {
+    return 'Cet email n\'a pas encore été confirmé.';
+  }
+  return msg || 'Une erreur est survenue. Veuillez réessayer.';
+}
+
 export function LoginPage() {
   const { signIn } = useAuthStore();
   const [email, setEmail] = useState('');
@@ -15,7 +30,7 @@ export function LoginPage() {
     try {
       await signIn(email, password);
     } catch (err) {
-      setError((err as Error).message);
+      setError(friendlyError(err));
     } finally {
       setLoading(false);
     }
