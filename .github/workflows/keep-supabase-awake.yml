@@ -1,0 +1,45 @@
+name: Keep Supabase awake
+
+# Second, independent safety net against Supabase free-tier auto-pause
+# (which happens after 7 days of inactivity).
+#
+# The Vercel Cron in vercel.json is the primary mechanism; this workflow is
+# deliberately redundant because that cron silently stopped firing once and the
+# project paused. Running from GitHub means a Vercel-side problem can no longer
+# take the whole safety net down with it.
+#
+# If the ping fails, this job fails — and GitHub emails the repo owner, so a
+# broken keep-alive is noticed within a day instead of weeks later.
+
+on:
+  schedule:
+    # 05:00 UTC daily = 07:00 Paris (summer) / 06:00 (winter).
+    # Scheduled workflows only run on the repository's default branch.
+    - cron: '0 5 * * *'
+  workflow_dispatch: # allows running it manually from the Actions tab
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping the keep-alive endpoint
+        run: |
+          URL="https://trebratbnb.vercel.app/api/keep-alive"
+
+          # Up to 3 attempts, so a transient network blip doesn't raise a false alarm.
+          for attempt in 1 2 3; do
+            echo "Attempt $attempt — GET $URL"
+            BODY=$(curl -sS --max-time 30 "$URL" || true)
+            echo "Response: $BODY"
+
+            if echo "$BODY" | grep -q '"ok":true'; then
+              echo "✅ Supabase is awake."
+              exit 0
+            fi
+
+            [ "$attempt" -lt 3 ] && sleep 20
+          done
+
+          echo "::error::Keep-alive ping failed — Supabase may be paused or unreachable."
+          echo "Check https://supabase.com/dashboard (project trebratbnb) for a 'Restore' button."
+          exit 1
