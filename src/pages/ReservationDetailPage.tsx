@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Phone, Edit2, XCircle, Check } from 'lucide-react';
+import { Phone, Edit2, XCircle } from 'lucide-react';
 import { Layout } from '../components/layout/Layout';
 import { PageHeader } from '../components/layout/PageHeader';
 import { Badge } from '../components/ui/Badge';
@@ -15,7 +15,6 @@ import { STATUT_SEJOUR_LABELS, ETAT_EDL_LABELS } from '../utils/labels';
 import { formatDateTime, formatInputDate, splitDateTime, combineDateTime, computeStatutSejour } from '../utils/dateUtils';
 import { fetchReservation } from '../services/reservationService';
 import { updateCalendarEvent, createCalendarEvent } from '../services/googleCalendarService';
-import { useAuthStore } from '../stores/authStore';
 import type { Reservation, Assignee } from '../types';
 
 export function ReservationDetailPage() {
@@ -25,8 +24,6 @@ export function ReservationDetailPage() {
   const { taches, fetchTaches, updateTache } = useTacheStore();
   const { edls, fetchEdls } = useEdlStore();
   const { achats, fetchAchats } = useAchatStore();
-  const { profile } = useAuthStore();
-  const isProprietaire = profile?.role === 'proprietaire';
   const [reservation, setReservation] = useState<Reservation | null>(null);
   const [editing, setEditing] = useState(false);
   const [editData, setEditData] = useState({ voyageur: '', telephone: '', nb_personnes: 1, commentaires: '', dateCheckin: '', timeCheckin: '', dateCheckout: '', timeCheckout: '' });
@@ -220,19 +217,15 @@ export function ReservationDetailPage() {
           <div className="space-y-2">
             {taches.map((t) => (
               <div key={t.id} className="flex items-center gap-2">
-                {isProprietaire ? (
-                  <input
-                    type="checkbox"
-                    checked={t.a_faire}
-                    onChange={() => handleToggleAFaire(t.id, t.a_faire)}
-                    className="w-5 h-5 accent-[#007AFF]"
-                  />
-                ) : (
-                  <div className={`w-5 h-5 rounded border-2 shrink-0 flex items-center justify-center ${t.a_faire ? 'bg-[#007AFF] border-[#007AFF]' : 'border-gray-300'}`}>
-                    {t.a_faire && <Check size={12} className="text-white" />}
-                  </div>
-                )}
-                <div className="flex-1">
+                {/* Marie, Manu and Aliénor can all decide whether a task is to be done */}
+                <input
+                  type="checkbox"
+                  checked={t.a_faire}
+                  onChange={() => handleToggleAFaire(t.id, t.a_faire)}
+                  aria-label={t.a_faire ? 'Tâche à faire (décocher)' : 'Tâche pas nécessaire (cocher)'}
+                  className="w-5 h-5 shrink-0 accent-[#007AFF]"
+                />
+                <div className="flex-1 min-w-0">
                   <TacheItem tache={t} onToggleDone={handleToggleTache} onAssign={handleAssign} />
                 </div>
               </div>

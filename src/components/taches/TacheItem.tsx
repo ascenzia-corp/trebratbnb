@@ -28,51 +28,56 @@ export function TacheItem({ tache, onToggleDone, onAssign }: Props) {
           {isDone && <Check size={16} />}
         </button>
         <div className="flex-1 min-w-0">
-          <p className={`font-medium text-sm ${isDone ? 'line-through text-gray-400' : 'text-gray-900'}`}>
-            {tache.type_tache === 'autre' ? `🔧 ${tache.titre}` : TYPE_TACHE_LABELS[tache.type_tache]}
-          </p>
-          <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+          {/* Title and assignment buttons share the first line only, so the
+              tags below get the full width of the card. */}
+          <div className="flex items-start justify-between gap-2">
+            <p className={`flex-1 min-w-0 font-medium text-sm ${isDone ? 'line-through text-gray-400' : 'text-gray-900'}`}>
+              {tache.type_tache === 'autre' ? `🔧 ${tache.titre}` : TYPE_TACHE_LABELS[tache.type_tache]}
+            </p>
+            {!isDone && (
+              <div className="flex gap-1 shrink-0">
+                {tache.assignee_a !== 'manu' && (
+                  <button
+                    onClick={() => onAssign(tache.id, 'manu')}
+                    className="text-xs px-2 py-1 rounded-lg bg-blue-50 text-blue-500"
+                  >
+                    Manu
+                  </button>
+                )}
+                {tache.assignee_a !== 'alienor' && (
+                  <button
+                    onClick={() => onAssign(tache.id, 'alienor')}
+                    className="text-xs px-2 py-1 rounded-lg bg-purple-50 text-purple-500"
+                  >
+                    Aliénor
+                  </button>
+                )}
+                {tache.assignee_a !== 'non_assignee' && (
+                  <button
+                    onClick={() => onAssign(tache.id, 'non_assignee')}
+                    className="text-xs px-2 py-1 rounded-lg bg-gray-100 text-gray-400"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+          {/* Tags on one line (same layout for check-in and check-out), date below */}
+          <div className="flex items-center gap-1.5 mt-1.5 whitespace-nowrap">
             {/* A follow-up job ("racheter une ampoule") isn't tied to check-in/out */}
             {tache.type_tache !== 'autre' && <Badge {...moment} />}
-            <Badge {...assignee} />
-            {needsAttention && (
+            {needsAttention ? (
+              // "À assigner" already says nobody is on it: no extra "Non assignée" tag
               <span className="text-xs font-semibold px-1.5 py-0.5 rounded bg-orange-100 text-orange-600">À assigner</span>
-            )}
-            {tache.date_echeance && (
-              <span className="text-xs text-gray-400">
-                📅 {formatDateShort(tache.date_echeance)}
-              </span>
+            ) : (
+              <Badge {...assignee} />
             )}
           </div>
+          {tache.date_echeance && (
+            <p className="text-xs text-gray-400 mt-1">📅 {formatDateShort(tache.date_echeance)}</p>
+          )}
         </div>
-        {!isDone && (
-          <div className="flex gap-1">
-            {tache.assignee_a !== 'manu' && (
-              <button
-                onClick={() => onAssign(tache.id, 'manu')}
-                className="text-xs px-2 py-1 rounded-lg bg-blue-50 text-blue-500"
-              >
-                Manu
-              </button>
-            )}
-            {tache.assignee_a !== 'alienor' && (
-              <button
-                onClick={() => onAssign(tache.id, 'alienor')}
-                className="text-xs px-2 py-1 rounded-lg bg-purple-50 text-purple-500"
-              >
-                Aliénor
-              </button>
-            )}
-            {tache.assignee_a !== 'non_assignee' && (
-              <button
-                onClick={() => onAssign(tache.id, 'non_assignee')}
-                className="text-xs px-2 py-1 rounded-lg bg-gray-100 text-gray-400"
-              >
-                ✕
-              </button>
-            )}
-          </div>
-        )}
       </div>
     </div>
   );
