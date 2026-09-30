@@ -152,15 +152,27 @@ export function useEdlSheet(reservationId: string | null) {
   // ------------------------------------------------------------------ actions
 
   const setEtat = useCallback(
-    (edl: EtatDesLieux, etat: EtatEdl | null, agent: EdlAgent) => {
+    (edl: EtatDesLieux, etat: EtatEdl, agent: EdlAgent) => {
       if (!reservationId) return;
       enqueue({
         kind: 'edl_update',
         reservationId,
         id: edl.id,
-        patch: etat
-          ? { etat, probleme_signale: etat !== 'ras', realise_par: agent, date_constat: new Date().toISOString() }
-          : { etat: 'ras', probleme_signale: false, realise_par: null, date_constat: null },
+        patch: { etat, probleme_signale: etat !== 'ras', realise_par: agent, date_constat: new Date().toISOString() },
+      });
+    },
+    [enqueue, reservationId]
+  );
+
+  /** Back to "à vérifier" (the state was tapped by mistake). */
+  const clearEtat = useCallback(
+    (edl: EtatDesLieux) => {
+      if (!reservationId) return;
+      enqueue({
+        kind: 'edl_update',
+        reservationId,
+        id: edl.id,
+        patch: { etat: 'ras', probleme_signale: false, realise_par: null, date_constat: null },
       });
     },
     [enqueue, reservationId]
@@ -265,6 +277,7 @@ export function useEdlSheet(reservationId: string | null) {
     pendingCount: pendingOps.length,
     reload: () => load(),
     setEtat,
+    clearEtat,
     setComment,
     markRemainingRas,
     setNotes,

@@ -4,8 +4,8 @@ export type MomentTache = 'checkin' | 'checkout';
 export type StatutTache = 'a_faire' | 'fait';
 export type Assignee = 'manu' | 'alienor' | 'non_assignee';
 export type MomentEdl = 'entree' | 'sortie';
-/** Who can perform an état des lieux. */
-export type EdlAgent = 'marie' | 'manu' | 'alienor';
+/** Who performs an état des lieux: the field agents only (Marie lives abroad). */
+export type EdlAgent = 'manu' | 'alienor';
 export type EtatEdl = 'ras' | 'a_signaler' | 'probleme';
 export type StatutAchat = 'a_acheter' | 'achete' | 'non_necessaire';
 export type Demandeur = 'marie' | 'manu' | 'alienor';

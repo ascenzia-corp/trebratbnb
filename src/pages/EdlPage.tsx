@@ -16,11 +16,11 @@ import { DEMANDEUR_LABELS, PIECES_ORDERED } from '../utils/labels';
 import { computeStatutSejour, formatDateRange } from '../utils/dateUtils';
 import type { EdlAgent, EtatDesLieux, MomentEdl, Reservation } from '../types';
 
-const AGENTS: EdlAgent[] = ['marie', 'manu', 'alienor'];
+const AGENTS: EdlAgent[] = ['manu', 'alienor'];
 const AGENT_STORAGE_KEY = 'edl-agent';
 
 function isAgent(v: unknown): v is EdlAgent {
-  return v === 'marie' || v === 'manu' || v === 'alienor';
+  return v === 'manu' || v === 'alienor';
 }
 
 function readStoredAgent(): EdlAgent | null {
@@ -277,7 +277,7 @@ export function EdlPage() {
                 row={row}
                 entryRow={moment === 'sortie' ? entryRows.get(row.piece) : undefined}
                 onSetEtat={(etat) => {
-                  if (etat === null) return sheet.setEtat(row, null, agent ?? 'marie');
+                  if (etat === null) return sheet.clearEtat(row);
                   const a = requireAgent();
                   if (a) sheet.setEtat(row, etat, a);
                 }}

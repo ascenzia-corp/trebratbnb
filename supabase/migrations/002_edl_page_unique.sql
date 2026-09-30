@@ -4,22 +4,16 @@
 -- À exécuter une fois dans Supabase → SQL Editor. Sans risque à relancer.
 --
 -- 1. Tâches libres ("racheter une ampoule") créées depuis l'état des lieux
--- 2. Marie peut aussi réaliser un état des lieux
--- 3. Retours des locataires + remarques générales, par état des lieux
--- 4. Une seule ligne par pièce et par moment (fusion des doublons éventuels)
--- 5. Création des pièces manquantes (entrée ET sortie) des réservations existantes
+-- 2. Retours des locataires + remarques générales, par état des lieux
+-- 3. Une seule ligne par pièce et par moment (fusion des doublons éventuels)
+-- 4. Création des pièces manquantes (entrée ET sortie) des réservations existantes
 
 -- 1. Nouveau type de tâche : 'autre'
 ALTER TABLE taches DROP CONSTRAINT IF EXISTS taches_type_tache_check;
 ALTER TABLE taches ADD CONSTRAINT taches_type_tache_check
   CHECK (type_tache IN ('lits_a_faire', 'lits_a_defaire', 'menage', 'edl_entree', 'edl_sortie', 'autre'));
 
--- 2. Marie peut réaliser un état des lieux
-ALTER TABLE etats_des_lieux DROP CONSTRAINT IF EXISTS etats_des_lieux_realise_par_check;
-ALTER TABLE etats_des_lieux ADD CONSTRAINT etats_des_lieux_realise_par_check
-  CHECK (realise_par IN ('marie', 'manu', 'alienor'));
-
--- 3. Notes par état des lieux (une ligne par réservation et par moment)
+-- 2. Notes par état des lieux (une ligne par réservation et par moment)
 CREATE TABLE IF NOT EXISTS edl_notes (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   reservation_id UUID NOT NULL REFERENCES reservations(id) ON DELETE CASCADE,
@@ -46,7 +40,7 @@ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
--- 4. Une seule ligne par pièce et par moment.
+-- 3. Une seule ligne par pièce et par moment.
 --    D'éventuels doublons sont fusionnés d'abord : on garde la ligne déjà
 --    remplie (sinon la plus récente) et on lui rattache les photos des autres.
 WITH ranked AS (
@@ -77,7 +71,7 @@ WHERE e.id = r.id AND r.id <> r.keep_id;
 CREATE UNIQUE INDEX IF NOT EXISTS etats_des_lieux_une_piece_par_moment
   ON etats_des_lieux (reservation_id, piece, moment);
 
--- 5. Pièces manquantes : chaque réservation doit avoir ses 18 pièces en entrée et en sortie
+-- 4. Pièces manquantes : chaque réservation doit avoir ses 18 pièces en entrée et en sortie
 INSERT INTO etats_des_lieux (reservation_id, piece, moment, etat, probleme_signale)
 SELECT r.id, p.piece, m.moment, 'ras', false
 FROM reservations r
