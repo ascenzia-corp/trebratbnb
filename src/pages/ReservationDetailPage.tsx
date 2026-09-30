@@ -5,6 +5,7 @@ import { Layout } from '../components/layout/Layout';
 import { PageHeader } from '../components/layout/PageHeader';
 import { Badge } from '../components/ui/Badge';
 import { Card } from '../components/ui/Card';
+import { DateInput, INCOMPLETE_DATE_MESSAGE } from '../components/ui/DateInput';
 import { TacheItem } from '../components/taches/TacheItem';
 import { useReservationStore } from '../stores/reservationStore';
 import { useTacheStore } from '../stores/tacheStore';
@@ -29,6 +30,9 @@ export function ReservationDetailPage() {
   const [reservation, setReservation] = useState<Reservation | null>(null);
   const [editing, setEditing] = useState(false);
   const [editData, setEditData] = useState({ voyageur: '', telephone: '', nb_personnes: 1, commentaires: '', dateCheckin: '', timeCheckin: '', dateCheckout: '', timeCheckout: '' });
+  const [checkinIncomplete, setCheckinIncomplete] = useState(false);
+  const [checkoutIncomplete, setCheckoutIncomplete] = useState(false);
+  const [showProblems, setShowProblems] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -70,9 +74,18 @@ export function ReservationDetailPage() {
   };
 
   const isCheckoutValid = !editData.dateCheckin || !editData.dateCheckout || editData.dateCheckout >= editData.dateCheckin;
+  const problems = [
+    !editData.voyageur.trim() && 'le nom du voyageur',
+    checkinIncomplete ? 'la date de check-in est incomplète' : !editData.dateCheckin && 'la date de check-in',
+    checkoutIncomplete ? 'la date de check-out est incomplète' : !editData.dateCheckout && 'la date de check-out',
+    !isCheckoutValid && 'le check-out doit être après le check-in',
+  ].filter((p): p is string => !!p);
 
   const handleSaveEdit = async () => {
-    if (!isCheckoutValid) return;
+    if (problems.length) {
+      setShowProblems(true);
+      return;
+    }
     const newCheckin = combineDateTime(editData.dateCheckin, editData.timeCheckin);
     const newCheckout = combineDateTime(editData.dateCheckout, editData.timeCheckout);
 
@@ -164,27 +177,32 @@ export function ReservationDetailPage() {
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Check-in</label>
                 <div className="grid grid-cols-2 gap-2">
-                  <input type="date" value={editData.dateCheckin} onChange={(e) => {
-                    const newDate = e.target.value;
+                  <DateInput value={editData.dateCheckin} onChange={(newDate) => {
                     setEditData((prev) => ({
                       ...prev,
                       dateCheckin: newDate,
-                      dateCheckout: prev.dateCheckout && prev.dateCheckout < newDate ? newDate : prev.dateCheckout,
+                      dateCheckout: newDate && prev.dateCheckout && prev.dateCheckout < newDate ? newDate : prev.dateCheckout,
                     }));
-                  }} className={inputClass} />
+                  }} onIncompleteChange={setCheckinIncomplete} className={`${inputClass} ${checkinIncomplete ? 'border-red-400' : ''}`} />
                   <input type="time" value={editData.timeCheckin} onChange={(e) => setEditData({ ...editData, timeCheckin: e.target.value })} className={inputClass} />
                 </div>
+                {checkinIncomplete && <p className="text-xs text-red-500 mt-1">{INCOMPLETE_DATE_MESSAGE}</p>}
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Check-out</label>
                 <div className="grid grid-cols-2 gap-2">
-                  <input type="date" value={editData.dateCheckout} onChange={(e) => setEditData({ ...editData, dateCheckout: e.target.value })} min={editData.dateCheckin || undefined} className={`${inputClass} ${!isCheckoutValid ? 'border-red-400' : ''}`} />
+                  <DateInput value={editData.dateCheckout} onChange={(v) => setEditData((prev) => ({ ...prev, dateCheckout: v }))} onIncompleteChange={setCheckoutIncomplete} min={editData.dateCheckin || undefined} className={`${inputClass} ${!isCheckoutValid || checkoutIncomplete ? 'border-red-400' : ''}`} />
                   <input type="time" value={editData.timeCheckout} onChange={(e) => setEditData({ ...editData, timeCheckout: e.target.value })} className={inputClass} />
                 </div>
-                {!isCheckoutValid && <p className="text-xs text-red-500 mt-1">La date de sortie doit être postérieure à la date d'entrée</p>}
+                {checkoutIncomplete
+                  ? <p className="text-xs text-red-500 mt-1">{INCOMPLETE_DATE_MESSAGE}</p>
+                  : !isCheckoutValid && <p className="text-xs text-red-500 mt-1">La date de sortie doit être postérieure à la date d'entrée</p>}
               </div>
               <textarea value={editData.commentaires} onChange={(e) => setEditData({ ...editData, commentaires: e.target.value })} className={`${inputClass} resize-none`} rows={3} />
-              <button onClick={handleSaveEdit} disabled={!isCheckoutValid} className="w-full bg-[#007AFF] text-white py-3 rounded-xl font-semibold disabled:opacity-50">Enregistrer</button>
+              {showProblems && problems.length > 0 && (
+                <p className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-3">Pour enregistrer, il manque : {problems.join(' · ')}.</p>
+              )}
+              <button onClick={handleSaveEdit} className="w-full bg-[#007AFF] text-white py-3 rounded-xl font-semibold">Enregistrer</button>
             </div>
           ) : (
             <div className="space-y-2 text-sm text-gray-700">

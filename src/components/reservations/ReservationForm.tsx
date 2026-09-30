@@ -2,6 +2,14 @@ import { useState } from 'react';
 import type { CreateReservationInput } from '../../types';
 import { splitDateTime, combineDateTime } from '../../utils/dateUtils';
 import { TimeoutError } from '../../utils/withTimeout';
+import { DateInput, INCOMPLETE_DATE_MESSAGE } from '../ui/DateInput';
+
+/** YYYY-MM-DD of the day after `date` (local time). */
+function nextDay(date: string): string {
+  const d = new Date(`${date}T12:00:00`);
+  d.setDate(d.getDate() + 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 
 function friendlyError(err: unknown): string {
   if (err instanceof TimeoutError) {
@@ -36,12 +44,27 @@ export function ReservationForm({ onSubmit, initial, submitLabel = 'Créer' }: P
   const [commentaires, setCommentaires] = useState(initial?.commentaires ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [checkinIncomplete, setCheckinIncomplete] = useState(false);
+  const [checkoutIncomplete, setCheckoutIncomplete] = useState(false);
+  const [showProblems, setShowProblems] = useState(false);
 
   const isCheckoutValid = !dateCheckin || !dateCheckout || dateCheckout >= dateCheckin;
 
+  // Everything still preventing creation, in plain words. The button stays
+  // active: a greyed-out button gave no clue about what was wrong.
+  const problems = [
+    !voyageur.trim() && 'le nom du voyageur',
+    checkinIncomplete ? 'la date de check-in est incomplète' : !dateCheckin && 'la date de check-in',
+    checkoutIncomplete ? 'la date de check-out est incomplète' : !dateCheckout && 'la date de check-out',
+    !isCheckoutValid && 'le check-out doit être après le check-in',
+  ].filter((p): p is string => !!p);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!voyageur || !dateCheckin || !dateCheckout || !isCheckoutValid) return;
+    if (problems.length) {
+      setShowProblems(true);
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
@@ -62,16 +85,19 @@ export function ReservationForm({ onSubmit, initial, submitLabel = 'Créer' }: P
 
   const handleCheckinDateChange = (newDate: string) => {
     setDateCheckin(newDate);
-    // If checkout is before new checkin, reset it
-    if (dateCheckout && dateCheckout < newDate) {
-      setDateCheckout(newDate);
+    if (!newDate) return;
+    // Pre-fill a real check-out (next day) rather than leaving an empty field
+    // whose greyed-out hints look like a date; also fix one now before check-in.
+    if (!dateCheckout || checkoutIncomplete || dateCheckout < newDate) {
+      setDateCheckout(nextDay(newDate));
+      setCheckoutIncomplete(false);
     }
   };
 
   const inputClass = 'w-full bg-white rounded-xl px-4 py-3 text-gray-900 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30 focus:border-[#007AFF]';
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 px-4">
+    <form onSubmit={handleSubmit} noValidate className="space-y-4 px-4">
       <div>
         <label className="block text-sm font-medium text-gray-500 mb-1">Voyageur *</label>
         <input
@@ -111,12 +137,11 @@ export function ReservationForm({ onSubmit, initial, submitLabel = 'Créer' }: P
       <div>
         <label className="block text-sm font-medium text-gray-500 mb-1">Check-in *</label>
         <div className="grid grid-cols-2 gap-2">
-          <input
-            type="date"
+          <DateInput
             value={dateCheckin}
-            onChange={(e) => handleCheckinDateChange(e.target.value)}
-            className={inputClass}
-            required
+            onChange={handleCheckinDateChange}
+            onIncompleteChange={setCheckinIncomplete}
+            className={`${inputClass} ${checkinIncomplete ? 'border-red-400 focus:ring-red-300' : ''}`}
           />
           <input
             type="time"
@@ -126,19 +151,19 @@ export function ReservationForm({ onSubmit, initial, submitLabel = 'Créer' }: P
             placeholder="Heure (optionnel)"
           />
         </div>
+        {checkinIncomplete && <p className="text-xs text-red-500 mt-1">{INCOMPLETE_DATE_MESSAGE}</p>}
       </div>
 
       {/* Check-out: date + time */}
       <div>
         <label className="block text-sm font-medium text-gray-500 mb-1">Check-out *</label>
         <div className="grid grid-cols-2 gap-2">
-          <input
-            type="date"
+          <DateInput
             value={dateCheckout}
-            onChange={(e) => setDateCheckout(e.target.value)}
+            onChange={setDateCheckout}
+            onIncompleteChange={setCheckoutIncomplete}
             min={dateCheckin || undefined}
-            className={`${inputClass} ${!isCheckoutValid ? 'border-red-400 focus:ring-red-300' : ''}`}
-            required
+            className={`${inputClass} ${!isCheckoutValid || checkoutIncomplete ? 'border-red-400 focus:ring-red-300' : ''}`}
           />
           <input
             type="time"
@@ -148,8 +173,12 @@ export function ReservationForm({ onSubmit, initial, submitLabel = 'Créer' }: P
             placeholder="Heure (optionnel)"
           />
         </div>
-        {!isCheckoutValid && (
-          <p className="text-xs text-red-500 mt-1">La date de sortie doit être postérieure à la date d'entrée</p>
+        {checkoutIncomplete ? (
+          <p className="text-xs text-red-500 mt-1">{INCOMPLETE_DATE_MESSAGE}</p>
+        ) : (
+          !isCheckoutValid && (
+            <p className="text-xs text-red-500 mt-1">La date de sortie doit être postérieure à la date d'entrée</p>
+          )
         )}
       </div>
 
@@ -168,13 +197,20 @@ export function ReservationForm({ onSubmit, initial, submitLabel = 'Créer' }: P
         <p className="text-sm text-red-500 bg-red-50 rounded-xl px-4 py-3">{error}</p>
       )}
 
+      {showProblems && problems.length > 0 && (
+        <p className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-3">
+          Pour continuer, il manque : {problems.join(' · ')}.
+        </p>
+      )}
+
       <button
         type="submit"
-        disabled={submitting || !voyageur || !dateCheckin || !dateCheckout || !isCheckoutValid}
+        disabled={submitting}
         className="w-full bg-[#007AFF] text-white py-3.5 rounded-xl font-semibold text-base disabled:opacity-50 active:scale-[0.98] transition-transform"
       >
         {submitting ? 'Création...' : submitLabel}
       </button>
+
     </form>
   );
 }

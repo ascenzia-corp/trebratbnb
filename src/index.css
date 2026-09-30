@@ -22,6 +22,12 @@ html, body, #root {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+/* Room for the fixed tab bar (4rem) plus the iPhone home-indicator area,
+   so the end of every page can be scrolled clear of the tab bar. */
+.pb-tabbar {
+  padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+}
+
 /* Header top padding = base spacing + the notch / Dynamic Island safe area */
 .pt-safe {
   padding-top: calc(env(safe-area-inset-top, 0px) + 0.75rem);
