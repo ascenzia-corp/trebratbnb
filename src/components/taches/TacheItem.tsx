@@ -29,10 +29,11 @@ export function TacheItem({ tache, onToggleDone, onAssign }: Props) {
         </button>
         <div className="flex-1 min-w-0">
           <p className={`font-medium text-sm ${isDone ? 'line-through text-gray-400' : 'text-gray-900'}`}>
-            {TYPE_TACHE_LABELS[tache.type_tache]}
+            {tache.type_tache === 'autre' ? `🔧 ${tache.titre}` : TYPE_TACHE_LABELS[tache.type_tache]}
           </p>
           <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-            <Badge {...moment} />
+            {/* A follow-up job ("racheter une ampoule") isn't tied to check-in/out */}
+            {tache.type_tache !== 'autre' && <Badge {...moment} />}
             <Badge {...assignee} />
             {needsAttention && (
               <span className="text-xs font-semibold px-1.5 py-0.5 rounded bg-orange-100 text-orange-600">À assigner</span>

@@ -55,23 +55,46 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   },
 }));
 
+const profileCacheKey = (userId: string) => `profile:${userId}`;
+
+function readCachedProfile(userId: string): UserProfile | null {
+  try {
+    const raw = localStorage.getItem(profileCacheKey(userId));
+    return raw ? (JSON.parse(raw) as UserProfile) : null;
+  } catch {
+    return null;
+  }
+}
+
 async function fetchProfile(user: User): Promise<UserProfile> {
   // Try to get profile from profiles table
   const { data } = await supabase
     .from('profiles')
     .select('*')
     .eq('id', user.id)
-    .single();
+    .single()
+    .then((r) => r, () => ({ data: null }));
 
   if (data) {
-    return {
+    const profile: UserProfile = {
       id: data.id,
       email: user.email ?? '',
       display_name: data.display_name ?? user.email ?? '',
       role: data.role ?? 'agent_terrain',
       agent_key: data.agent_key ?? null,
     };
+    try {
+      localStorage.setItem(profileCacheKey(user.id), JSON.stringify(profile));
+    } catch {
+      /* storage unavailable: the profile just won't survive offline */
+    }
+    return profile;
   }
+
+  // Offline (weak signal at the house): keep the last known role instead of
+  // silently demoting the owner to a field agent.
+  const cached = readCachedProfile(user.id);
+  if (cached) return cached;
 
   // Fallback: derive from email
   return {

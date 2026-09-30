@@ -1,9 +1,11 @@
 export type StatutSejour = 'a_venir' | 'en_cours' | 'termine' | 'annule';
-export type TypeTache = 'lits_a_faire' | 'lits_a_defaire' | 'menage' | 'edl_entree' | 'edl_sortie';
+export type TypeTache = 'lits_a_faire' | 'lits_a_defaire' | 'menage' | 'edl_entree' | 'edl_sortie' | 'autre';
 export type MomentTache = 'checkin' | 'checkout';
 export type StatutTache = 'a_faire' | 'fait';
 export type Assignee = 'manu' | 'alienor' | 'non_assignee';
 export type MomentEdl = 'entree' | 'sortie';
+/** Who can perform an état des lieux. */
+export type EdlAgent = 'marie' | 'manu' | 'alienor';
 export type EtatEdl = 'ras' | 'a_signaler' | 'probleme';
 export type StatutAchat = 'a_acheter' | 'achete' | 'non_necessaire';
 export type Demandeur = 'marie' | 'manu' | 'alienor';
@@ -74,12 +76,22 @@ export interface EtatDesLieux {
   commentaire: string | null;
   probleme_signale: boolean;
   description_probleme: string | null;
-  realise_par: 'manu' | 'alienor' | null;
+  realise_par: EdlAgent | null;
   date_constat: string | null;
   created_at: string;
   updated_at: string;
   reservation?: Reservation;
   photos?: EdlPhoto[];
+}
+
+/** Free-text notes attached to one état des lieux (a reservation × a moment). */
+export interface EdlNotes {
+  id?: string;
+  reservation_id: string;
+  moment: MomentEdl;
+  retours_locataires: string | null;
+  remarques: string | null;
+  updated_at?: string;
 }
 
 export interface EdlPhoto {

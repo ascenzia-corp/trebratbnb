@@ -1,13 +1,13 @@
 import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './stores/authStore';
+import { useSyncStore } from './stores/syncStore';
 import { LoginPage } from './pages/LoginPage';
 import { ReservationsPage } from './pages/ReservationsPage';
 import { ReservationDetailPage } from './pages/ReservationDetailPage';
 import { ReservationFormPage } from './pages/ReservationFormPage';
 import { TachesPage } from './pages/TachesPage';
 import { EdlPage } from './pages/EdlPage';
-import { EdlDetailPage } from './pages/EdlDetailPage';
 import { AchatsPage } from './pages/AchatsPage';
 import { AchatFormPage } from './pages/AchatFormPage';
 import { AchatDetailPage } from './pages/AchatDetailPage';
@@ -38,7 +38,8 @@ function AppRoutes() {
       <Route path="/reservations/:id" element={<ReservationDetailPage />} />
       <Route path="/taches" element={<TachesPage />} />
       <Route path="/etats-des-lieux" element={<EdlPage />} />
-      <Route path="/etats-des-lieux/:id" element={<EdlDetailPage />} />
+      {/* Former per-room page: everything now lives on the single EDL page */}
+      <Route path="/etats-des-lieux/:id" element={<Navigate to="/etats-des-lieux" replace />} />
       <Route path="/achats" element={<AchatsPage />} />
       <Route path="/achats/new" element={<AchatFormPage />} />
       <Route path="/achats/:id" element={<AchatDetailPage />} />
@@ -52,10 +53,13 @@ function AppRoutes() {
 
 export default function App() {
   const { initialize } = useAuthStore();
+  const initSync = useSyncStore((s) => s.init);
 
   useEffect(() => {
     initialize();
-  }, [initialize]);
+    // Sends changes made offline as soon as the network allows, from any screen.
+    initSync();
+  }, [initialize, initSync]);
 
   return (
     <BrowserRouter>

@@ -63,9 +63,11 @@ export function ReservationDetailPage() {
   // The EDL store is shared and may hold entries from other reservations
   // (e.g. the dashboard loads them all). Only count this reservation's rooms.
   const myEdls = edls.filter((e) => e.reservation_id === reservation.id);
-  const problemCount = myEdls.filter((e) => e.etat === 'probleme').length;
-  const edlDone = myEdls.filter((e) => e.realise_par !== null).length;
-  const edlTotal = myEdls.length || 18;
+  const problemCount = myEdls.filter((e) => e.realise_par && e.etat === 'probleme').length;
+  const edlProgress = (moment: 'entree' | 'sortie') => {
+    const rows = myEdls.filter((e) => e.moment === moment);
+    return { done: rows.filter((e) => e.realise_par !== null).length, total: rows.length || 18 };
+  };
 
   const isCheckoutValid = !editData.dateCheckin || !editData.dateCheckout || editData.dateCheckout >= editData.dateCheckin;
 
@@ -221,9 +223,25 @@ export function ReservationDetailPage() {
         </div>
 
         {/* EDL summary */}
-        <Card onClick={() => navigate(`/etats-des-lieux?reservation=${reservation.id}`)}>
-          <h2 className="text-lg font-bold text-gray-900 mb-1">🏡 États des lieux</h2>
-          <p className="text-sm text-gray-500">{edlDone}/{edlTotal} réalisés</p>
+        <Card>
+          <h2 className="text-lg font-bold text-gray-900 mb-2">🏡 États des lieux</h2>
+          <div className="grid grid-cols-2 gap-2">
+            {(['entree', 'sortie'] as const).map((m) => {
+              const { done, total } = edlProgress(m);
+              return (
+                <button
+                  key={m}
+                  onClick={() => navigate(`/etats-des-lieux?reservation=${reservation.id}&moment=${m}`)}
+                  className="bg-gray-50 rounded-xl py-2.5 text-left px-3 active:bg-gray-100"
+                >
+                  <p className="text-sm font-medium text-gray-900">{m === 'entree' ? 'Entrée' : 'Sortie'}</p>
+                  <p className={`text-xs ${done === total ? 'text-green-600' : 'text-gray-500'}`}>
+                    {done}/{total} pièces
+                  </p>
+                </button>
+              );
+            })}
+          </div>
           {problemCount > 0 && (
             <p className="text-sm text-red-500 mt-1">{ETAT_EDL_LABELS.probleme.label} : {problemCount} pièce{problemCount > 1 ? 's' : ''}</p>
           )}

@@ -1,17 +1,17 @@
 import { create } from 'zustand';
 import type { EtatDesLieux } from '../types';
 import * as service from '../services/edlService';
-import { compressImage } from '../utils/imageCompression';
 import { supabase } from '../services/supabase';
 
+/**
+ * Read-only EDL data for summaries (reservation detail, dashboard). Editing an
+ * état des lieux goes through useEdlSheet, which works offline.
+ */
 interface EdlStore {
   edls: EtatDesLieux[];
   loading: boolean;
   lastReservationId?: string;
   fetchEdls: (reservationId?: string) => Promise<void>;
-  updateEdl: (id: string, data: Partial<EtatDesLieux>) => Promise<void>;
-  uploadPhoto: (edlId: string, file: File) => Promise<void>;
-  deletePhoto: (photoId: string, storagePath: string) => Promise<void>;
   subscribeToChanges: () => () => void;
 }
 
@@ -27,22 +27,6 @@ export const useEdlStore = create<EdlStore>((set, get) => ({
     } catch {
       set({ loading: false });
     }
-  },
-
-  updateEdl: async (id, data) => {
-    await service.updateEdl(id, data);
-    // Refresh the single EDL in the list
-    const edls = get().edls.map((e) => (e.id === id ? { ...e, ...data } : e));
-    set({ edls });
-  },
-
-  uploadPhoto: async (edlId, file) => {
-    const compressed = await compressImage(file);
-    await service.uploadEdlPhoto(edlId, compressed);
-  },
-
-  deletePhoto: async (photoId, storagePath) => {
-    await service.deleteEdlPhoto(photoId, storagePath);
   },
 
   subscribeToChanges: () => {

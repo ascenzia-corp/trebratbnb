@@ -13,6 +13,7 @@ export const TYPE_TACHE_LABELS: Record<TypeTache, string> = {
   menage: '🧹 Ménage',
   edl_entree: '📋 État des lieux entrée',
   edl_sortie: '📋 État des lieux sortie',
+  autre: '🔧 À prévoir',
 };
 
 export const MOMENT_TACHE_LABELS: Record<MomentTache, { label: string; color: string; bg: string }> = {

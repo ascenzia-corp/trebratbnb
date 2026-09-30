@@ -9,8 +9,10 @@ interface Props {
 }
 
 export function TacheGroup({ voyageur, taches, onToggleDone, onAssign }: Props) {
-  const checkinTaches = taches.filter((t) => t.moment === 'checkin');
-  const checkoutTaches = taches.filter((t) => t.moment === 'checkout');
+  // Follow-up jobs noted during an état des lieux get their own section.
+  const aPrevoir = taches.filter((t) => t.type_tache === 'autre');
+  const checkinTaches = taches.filter((t) => t.type_tache !== 'autre' && t.moment === 'checkin');
+  const checkoutTaches = taches.filter((t) => t.type_tache !== 'autre' && t.moment === 'checkout');
 
   return (
     <div className="space-y-2">
@@ -30,6 +32,15 @@ export function TacheGroup({ voyageur, taches, onToggleDone, onAssign }: Props) 
         <div className="space-y-2">
           <p className="text-xs font-medium text-orange-500 px-1">▸ Check-out</p>
           {checkoutTaches.map((tache) => (
+            <TacheItem key={tache.id} tache={tache} onToggleDone={onToggleDone} onAssign={onAssign} />
+          ))}
+        </div>
+      )}
+      {aPrevoir.length > 0 && (checkinTaches.length > 0 || checkoutTaches.length > 0) && <div className="h-3" />}
+      {aPrevoir.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-gray-500 px-1">▸ À prévoir (état des lieux)</p>
+          {aPrevoir.map((tache) => (
             <TacheItem key={tache.id} tache={tache} onToggleDone={onToggleDone} onAssign={onAssign} />
           ))}
         </div>

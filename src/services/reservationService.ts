@@ -82,14 +82,16 @@ export async function createReservation(input: CreateReservationInput): Promise<
     console.error('Taches step skipped:', e);
   }
 
-  // Create 18 EDL entries automatically
-  const edls = PIECES_ORDERED.map((piece) => ({
-    reservation_id: reservation.id,
-    piece,
-    moment: 'entree',
-    etat: 'ras',
-    probleme_signale: false,
-  }));
+  // Create the 18 rooms for both the entrée and the sortie état des lieux
+  const edls = (['entree', 'sortie'] as const).flatMap((moment) =>
+    PIECES_ORDERED.map((piece) => ({
+      reservation_id: reservation.id,
+      piece,
+      moment,
+      etat: 'ras',
+      probleme_signale: false,
+    }))
+  );
 
   try {
     const { error: edlError } = await withTimeout(
