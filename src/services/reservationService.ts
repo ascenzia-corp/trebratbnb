@@ -2,6 +2,12 @@ import { supabase } from './supabase';
 import type { Reservation, CreateReservationInput } from '../types';
 import { PIECES_ORDERED } from '../utils/labels';
 import { createCalendarEvent } from './googleCalendarService';
+import { withTimeout } from '../utils/withTimeout';
+
+// No Supabase call should be able to hang the UI indefinitely.
+const STEP_TIMEOUT_MS = 15_000;
+// The calendar service already bounds each of its own fetches at 8s.
+const CALENDAR_TIMEOUT_MS = 20_000;
 
 export async function fetchReservations(): Promise<Reservation[]> {
   const { data, error } = await supabase
@@ -25,18 +31,25 @@ export async function fetchReservation(id: string): Promise<Reservation> {
 }
 
 export async function createReservation(input: CreateReservationInput): Promise<Reservation> {
-  const { data: reservation, error } = await supabase
-    .from('reservations')
-    .insert({
-      voyageur: input.voyageur,
-      telephone: input.telephone ?? null,
-      nb_personnes: input.nb_personnes ?? 1,
-      date_checkin: input.date_checkin,
-      date_checkout: input.date_checkout,
-      commentaires: input.commentaires ?? null,
-    })
-    .select()
-    .single();
+  // Creating the reservation row is the only step that must succeed. Each step
+  // is time-bounded and named, so a stalled call surfaces as a readable error
+  // instead of an endlessly spinning button.
+  const { data: reservation, error } = await withTimeout(
+    supabase
+      .from('reservations')
+      .insert({
+        voyageur: input.voyageur,
+        telephone: input.telephone ?? null,
+        nb_personnes: input.nb_personnes ?? 1,
+        date_checkin: input.date_checkin,
+        date_checkout: input.date_checkout,
+        commentaires: input.commentaires ?? null,
+      })
+      .select()
+      .single(),
+    STEP_TIMEOUT_MS,
+    'enregistrement de la réservation'
+  );
 
   if (error) throw error;
 
@@ -56,8 +69,18 @@ export async function createReservation(input: CreateReservationInput): Promise<
     assignee_a: 'non_assignee',
   }));
 
-  const { error: tacheError } = await supabase.from('taches').insert(taches);
-  if (tacheError) console.error('Error creating taches:', tacheError);
+  // Tasks, EDLs and the calendar event are secondary: if one of them fails or
+  // stalls, the reservation still exists and the user still gets through.
+  try {
+    const { error: tacheError } = await withTimeout(
+      supabase.from('taches').insert(taches),
+      STEP_TIMEOUT_MS,
+      'création des tâches'
+    );
+    if (tacheError) console.error('Error creating taches:', tacheError);
+  } catch (e) {
+    console.error('Taches step skipped:', e);
+  }
 
   // Create 18 EDL entries automatically
   const edls = PIECES_ORDERED.map((piece) => ({
@@ -68,25 +91,46 @@ export async function createReservation(input: CreateReservationInput): Promise<
     probleme_signale: false,
   }));
 
-  const { error: edlError } = await supabase.from('etats_des_lieux').insert(edls);
-  if (edlError) console.error('Error creating EDLs:', edlError);
+  try {
+    const { error: edlError } = await withTimeout(
+      supabase.from('etats_des_lieux').insert(edls),
+      STEP_TIMEOUT_MS,
+      'création des états des lieux'
+    );
+    if (edlError) console.error('Error creating EDLs:', edlError);
+  } catch (e) {
+    console.error('EDL step skipped:', e);
+  }
 
   // Create Google Calendar event
-  const calResult = await createCalendarEvent({
-    voyageur: input.voyageur,
-    date_checkin: input.date_checkin,
-    date_checkout: input.date_checkout,
-    nb_personnes: input.nb_personnes ?? 1,
-    telephone: input.telephone,
-    commentaires: input.commentaires,
-  });
+  try {
+    const calResult = await withTimeout(
+      createCalendarEvent({
+        voyageur: input.voyageur,
+        date_checkin: input.date_checkin,
+        date_checkout: input.date_checkout,
+        nb_personnes: input.nb_personnes ?? 1,
+        telephone: input.telephone,
+        commentaires: input.commentaires,
+      }),
+      CALENDAR_TIMEOUT_MS,
+      'synchronisation Google Agenda'
+    );
 
-  if (calResult?.eventId) {
-    await supabase
-      .from('reservations')
-      .update({ google_event_id: calResult.eventId })
-      .eq('id', reservation.id);
-    reservation.google_event_id = calResult.eventId;
+    if (calResult?.eventId) {
+      await withTimeout(
+        supabase
+          .from('reservations')
+          .update({ google_event_id: calResult.eventId })
+          .eq('id', reservation.id),
+        STEP_TIMEOUT_MS,
+        'enregistrement du lien Google Agenda'
+      );
+      reservation.google_event_id = calResult.eventId;
+    }
+  } catch (e) {
+    // The event can still be created later from the reservation detail page.
+    console.error('Google Calendar step skipped:', e);
   }
 
   return reservation;

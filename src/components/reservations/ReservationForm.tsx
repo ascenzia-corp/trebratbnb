@@ -1,6 +1,21 @@
 import { useState } from 'react';
 import type { CreateReservationInput } from '../../types';
 import { splitDateTime, combineDateTime } from '../../utils/dateUtils';
+import { TimeoutError } from '../../utils/withTimeout';
+
+function friendlyError(err: unknown): string {
+  if (err instanceof TimeoutError) {
+    return (
+      `${err.message} Vérifiez dans la liste si la réservation a malgré tout été créée ` +
+      `avant de réessayer. Si cela se reproduit, déconnectez-vous puis reconnectez-vous.`
+    );
+  }
+  const msg = (err as Error)?.message ?? '';
+  if (/load failed|failed to fetch|networkerror|aborted/i.test(msg)) {
+    return 'Connexion au serveur impossible. Vérifiez votre connexion internet et réessayez.';
+  }
+  return msg || 'Une erreur est survenue. Veuillez réessayer.';
+}
 
 interface Props {
   onSubmit: (data: CreateReservationInput) => Promise<void>;
@@ -39,7 +54,7 @@ export function ReservationForm({ onSubmit, initial, submitLabel = 'Créer' }: P
         commentaires: commentaires || undefined,
       });
     } catch (err) {
-      setError((err as Error)?.message || 'Une erreur est survenue. Veuillez réessayer.');
+      setError(friendlyError(err));
     } finally {
       setSubmitting(false);
     }
