@@ -74,8 +74,15 @@ export function TacheItem({ tache, onToggleDone, onAssign }: Props) {
               <Badge {...assignee} />
             )}
           </div>
-          {tache.date_echeance && (
-            <p className="text-xs text-gray-400 mt-1">📅 {formatDateShort(tache.date_echeance)}</p>
+          {tache.type_tache === 'autre' ? (
+            // Maintenance job: say where it was noticed rather than a due date
+            tache.reservation && (
+              <p className="text-xs text-gray-400 mt-1 truncate">
+                Signalé à l'état des lieux{tache.moment === 'checkout' ? ' de sortie' : " d'entrée"} · {tache.reservation.voyageur}
+              </p>
+            )
+          ) : (
+            tache.date_echeance && <p className="text-xs text-gray-400 mt-1">📅 {formatDateShort(tache.date_echeance)}</p>
           )}
         </div>
       </div>

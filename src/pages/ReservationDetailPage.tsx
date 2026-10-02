@@ -63,6 +63,9 @@ export function ReservationDetailPage() {
   const statut = STATUT_SEJOUR_LABELS[statutSejour];
   // The EDL store is shared and may hold entries from other reservations
   // (e.g. the dashboard loads them all). Only count this reservation's rooms.
+  // Only Marie's missions for this stay (beds, cleaning, EDL). Maintenance jobs
+  // spotted during an EDL are linked to the reservation but live in the Tâches tab.
+  const missions = taches.filter((t) => t.type_tache !== 'autre');
   const myEdls = edls.filter((e) => e.reservation_id === reservation.id);
   const problemCount = myEdls.filter((e) => e.realise_par && e.etat === 'probleme').length;
   const edlProgress = (moment: 'entree' | 'sortie') => {
@@ -215,7 +218,7 @@ export function ReservationDetailPage() {
         <div>
           <h2 className="text-lg font-bold text-gray-900 mb-2">✅ Tâches</h2>
           <div className="space-y-2">
-            {taches.map((t) => (
+            {missions.map((t) => (
               <div key={t.id} className="flex items-center gap-2">
                 {/* Marie, Manu and Aliénor can all decide whether a task is to be done */}
                 <input

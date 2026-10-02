@@ -4,6 +4,7 @@ import { PageHeader } from '../components/layout/PageHeader';
 import { FilterChips } from '../components/ui/FilterChips';
 import { EmptyState } from '../components/ui/EmptyState';
 import { TacheGroup } from '../components/taches/TacheGroup';
+import { TacheItem } from '../components/taches/TacheItem';
 import { useTacheStore } from '../stores/tacheStore';
 import { useAuthStore } from '../stores/authStore';
 import type { Assignee, MomentTache, Tache } from '../types';
@@ -43,13 +44,19 @@ export function TachesPage() {
     filtered = filtered.filter((t) => agentKey && t.assignee_a === agentKey);
   }
 
+  // Two kinds of tasks: Marie's missions for a stay, grouped by reservation,
+  // and maintenance jobs for the house (spotted during an EDL), listed apart.
+  const entretien = filtered.filter((t) => t.type_tache === 'autre');
+  let missions = filtered.filter((t) => t.type_tache !== 'autre');
+
+  // Check-in / check-out only means something for missions.
   if (momentFilter !== 'tous') {
-    filtered = filtered.filter((t) => t.moment === (momentFilter as MomentTache));
+    missions = missions.filter((t) => t.moment === (momentFilter as MomentTache));
   }
 
   // Group by reservation, sorted chronologically by earliest task date
   const groupMap = new Map<string, { voyageur: string; taches: Tache[]; earliestDate: string }>();
-  for (const t of filtered) {
+  for (const t of missions) {
     const key = t.reservation_id;
     const voyageur = t.reservation?.voyageur ?? 'Sans réservation';
     if (!groupMap.has(key)) groupMap.set(key, { voyageur, taches: [], earliestDate: t.date_echeance ?? '9999-12-31' });
@@ -88,18 +95,30 @@ export function TachesPage() {
       <div className="px-4 space-y-6 mt-2">
         {loading && !taches.length ? (
           <div className="text-center text-gray-400 py-8">Chargement...</div>
-        ) : groups.size === 0 ? (
+        ) : groups.size === 0 && entretien.length === 0 ? (
           <EmptyState emoji="✅" title="Aucune tâche" subtitle="Toutes les tâches sont faites !" />
         ) : (
-          Array.from(groups.entries()).map(([key, group]) => (
-            <TacheGroup
-              key={key}
-              voyageur={group.voyageur}
-              taches={group.taches}
-              onToggleDone={handleToggle}
-              onAssign={handleAssign}
-            />
-          ))
+          <>
+            {Array.from(groups.entries()).map(([key, group]) => (
+              <TacheGroup
+                key={key}
+                voyageur={group.voyageur}
+                taches={group.taches}
+                onToggleDone={handleToggle}
+                onAssign={handleAssign}
+              />
+            ))}
+            {entretien.length > 0 && (
+              <div className="space-y-2">
+                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide px-1">
+                  🔧 Entretien &amp; retours locataires
+                </h3>
+                {entretien.map((t) => (
+                  <TacheItem key={t.id} tache={t} onToggleDone={handleToggle} onAssign={handleAssign} />
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
     </Layout>
